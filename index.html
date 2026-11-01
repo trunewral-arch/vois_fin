@@ -1529,15 +1529,40 @@
     }
 
     /* ==========================================================================
-       4. CONTINUOUS SPEECH RECOGNITION & PUSH-TO-TALK
+       4. SPEECH RECOGNITION & PUSH-TO-TALK (TRUE SINGLE-SESSION)
        ========================================================================== */
     let recognition = null;
     let isHoldingRecording = false;
-    let accumulatedTranscripts = [];
-    let currentInterimTranscript = '';
+    let latestCapturedTranscript = '';
     let activePressCategoryId = null;
     let pressTimer = null;
     let isLongPress = false;
+
+    // Cleans up any stutter or duplicated words/tokens from Google speech recognizer
+    function cleanRecognizedText(str) {
+      if (!str) return '';
+      const tokens = str.trim().split(/\s+/);
+      const out = [];
+      for (let i = 0; i < tokens.length; i++) {
+        if (i > 0 && tokens[i].toLowerCase() === tokens[i - 1].toLowerCase()) {
+          continue;
+        }
+        out.push(tokens[i]);
+      }
+      // Check 2-word consecutive duplicates (e.g. ['15', 'руб', '15', 'руб'])
+      const finalTokens = [];
+      for (let i = 0; i < out.length; i++) {
+        if (i + 1 < out.length && i >= 2) {
+          if (out[i].toLowerCase() === out[i - 2].toLowerCase() && 
+              out[i + 1].toLowerCase() === out[i - 1].toLowerCase()) {
+            i++; // skip both duplicate words
+            continue;
+          }
+        }
+        finalTokens.push(out[i]);
+      }
+      return finalTokens.join(' ').trim();
+    }
 
     function initSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1547,28 +1572,20 @@
       }
       const rec = new SpeechRecognition();
       rec.lang = 'ru-RU';
-      rec.continuous = true;       // CONTINUOUS: Do not stop on brief pauses
-      rec.interimResults = true;    // INTERIM: Live feedback while speaking
+      rec.continuous = true;
+      rec.interimResults = true;
 
       rec.onstart = () => {
-        showRecordingOverlay(true, 'Слушаю... (говорите сумму и описание)');
+        // Recognition started smoothly
       };
 
       rec.onresult = (event) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const text = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            accumulatedTranscripts.push(text.trim());
-          } else {
-            interim += ' ' + text;
-          }
+        // Reconstruct the full phrase from all results in this session to prevent duplicate words
+        let phrase = '';
+        for (let i = 0; i < event.results.length; ++i) {
+          phrase += event.results[i][0].transcript + ' ';
         }
-        currentInterimTranscript = interim.trim();
-        const livePhrase = (accumulatedTranscripts.join(' ') + ' ' + currentInterimTranscript).trim();
-        if (livePhrase) {
-          showRecordingOverlay(true, `«${livePhrase}»`);
-        }
+        latestCapturedTranscript = phrase.trim();
       };
 
       rec.onerror = (event) => {
@@ -1580,17 +1597,9 @@
       };
 
       rec.onend = () => {
-        // If the user is STILL holding the button, restart recognition immediately
-        if (isHoldingRecording) {
-          try {
-            rec.start();
-            return;
-          } catch (e) {
-            console.log('Restart recognition error:', e);
-          }
-        }
-        showRecordingOverlay(false);
-        clearHoldingStyles();
+        // When speech recognition ends on silence, DO NOT restart!
+        // We already have the full phrase in latestCapturedTranscript.
+        // We quietly wait for the user to release the button.
       };
 
       return rec;
@@ -1614,11 +1623,12 @@
       });
     }
 
-    function handleSpeechResult(transcript, overrideCatId = null) {
+    function handleSpeechResult(rawTranscript, overrideCatId = null) {
       const targetCatId = overrideCatId || activePressCategoryId;
       if (!targetCatId) return;
 
-      const parsed = parseVoiceExpense(transcript);
+      const cleanedTranscript = cleanRecognizedText(rawTranscript);
+      const parsed = parseVoiceExpense(cleanedTranscript);
       const cat = state.categories.find(c => c.id === targetCatId);
 
       if (parsed.amount <= 0) {
@@ -1636,7 +1646,7 @@
         timestamp: Date.now()
       };
 
-      triggerDynamicIsland(tx, cat, transcript);
+      triggerDynamicIsland(tx, cat, cleanedTranscript);
     }
 
     function startPressCategory(catId, cardEl) {
@@ -1650,17 +1660,19 @@
         if (navigator.vibrate) navigator.vibrate(50);
 
         isHoldingRecording = true;
-        accumulatedTranscripts = [];
-        currentInterimTranscript = '';
+        latestCapturedTranscript = '';
+
+        // Steady recording indicator without flickering or jumping text
+        showRecordingOverlay(true, 'Идёт запись... Говорите фразу');
 
         if (recognition) {
           try {
             recognition.start();
           } catch (e) {
-            console.log('Recognition start issue:', e);
+            console.log('Recognition already active or busy:', e);
           }
         } else {
-          showRecordingOverlay(true, 'Микрофон недоступен. Используйте ручной тап или симулятор ✨');
+          showRecordingOverlay(true, 'Микрофон недоступен. Используйте ручной ввод или симулятор ✨');
           setTimeout(() => showRecordingOverlay(false), 2400);
         }
       }, 250);
@@ -1677,31 +1689,33 @@
         return;
       }
 
-      // Was long press (holding): user released button
+      // Was long press (holding): user released button NOW
       isHoldingRecording = false;
       if (navigator.vibrate) navigator.vibrate(30);
 
+      // Hide recording overlay and clear card glow
+      showRecordingOverlay(false);
+      clearHoldingStyles();
+
+      // Stop recognition engine cleanly
       if (recognition) {
         try {
           recognition.stop();
         } catch (e) {}
       }
 
-      showRecordingOverlay(false);
-      clearHoldingStyles();
-
-      // Collect all transcripts accumulated during the press
+      // Give a tiny moment (180ms) for audio buffer to finalize
       setTimeout(() => {
-        const fullSpokenText = (accumulatedTranscripts.join(' ') + ' ' + currentInterimTranscript).trim();
-        accumulatedTranscripts = [];
-        currentInterimTranscript = '';
+        const textToParse = latestCapturedTranscript.trim();
+        latestCapturedTranscript = '';
 
-        if (fullSpokenText) {
-          handleSpeechResult(fullSpokenText, catId);
+        if (textToParse) {
+          handleSpeechResult(textToParse, catId);
         } else {
+          // If held in silence without saying anything
           openAddEditModal(null, catId);
         }
-      }, 200);
+      }, 180);
     }
 
     /* ==========================================================================
