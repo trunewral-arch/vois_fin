@@ -1,0 +1,2248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Voice Expense">
+  <meta name="theme-color" content="#F2F2F7" id="meta-theme-color">
+  <title>Voice Expense — Голосовой учёт расходов</title>
+
+  <style>
+    :root {
+      --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --bg-primary: #F2F2F7;
+      --bg-card: rgba(255, 255, 255, 0.88);
+      --bg-card-hover: rgba(255, 255, 255, 0.98);
+      --bg-modal: #FFFFFF;
+      --bg-input: #E5E5EA;
+      --text-primary: #000000;
+      --text-secondary: #8E8E93;
+      --text-tertiary: #AEAEB2;
+      --border-subtle: rgba(60, 60, 67, 0.12);
+      --card-shadow: 0 4px 18px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+      --island-bg: #1C1C1E;
+      --island-text: #FFFFFF;
+      --active-pill: #FFFFFF;
+      --active-pill-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      --pill-container-bg: rgba(118, 118, 128, 0.12);
+      --danger: #FF3B30;
+      --success: #34C759;
+      --accent: #007AFF;
+      --radius-squircle: 22px;
+      --radius-sm: 14px;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #000000;
+      --bg-card: rgba(28, 28, 30, 0.82);
+      --bg-card-hover: rgba(44, 44, 46, 0.92);
+      --bg-modal: #1C1C1E;
+      --bg-input: #2C2C2E;
+      --text-primary: #FFFFFF;
+      --text-secondary: #8E8E93;
+      --text-tertiary: #636366;
+      --border-subtle: rgba(255, 255, 255, 0.12);
+      --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      --island-bg: #2C2C2E;
+      --island-text: #FFFFFF;
+      --active-pill: #636366;
+      --active-pill-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --pill-container-bg: rgba(118, 118, 128, 0.24);
+      --danger: #FF453A;
+      --success: #32D74B;
+      --accent: #0A84FF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+      padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 12px) env(safe-area-inset-bottom, 24px) env(safe-area-inset-left, 12px);
+    }
+
+    /* Main Container (Apple Mobile Viewport) */
+    .app-container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 12px 4px 48px 4px;
+      position: relative;
+    }
+
+    /* Header Styling */
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 8px 4px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .app-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-logo {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .app-title {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 17px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--card-shadow);
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* Balance Section */
+    .balance-card {
+      text-align: center;
+      padding: 10px 0 6px 0;
+    }
+
+    .balance-label {
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .balance-amount {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .currency-symbol {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .balance-subtext {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Period Filter Pills (Apple Segmented Control) */
+    .period-segmented {
+      display: flex;
+      background: var(--pill-container-bg);
+      border-radius: 12px;
+      padding: 3px;
+      position: relative;
+    }
+
+    .period-btn {
+      flex: 1;
+      padding: 7px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .period-btn.active {
+      color: var(--text-primary);
+      background: var(--active-pill);
+      box-shadow: var(--active-pill-shadow);
+    }
+
+    /* Segmented Proportion Bar (iOS Battery / Storage style) */
+    .stats-section {
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .segmented-bar {
+      height: 10px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      background: rgba(120, 120, 128, 0.16);
+      width: 100%;
+    }
+
+    .bar-segment {
+      height: 100%;
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .stats-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* 8 Categories Grid */
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .category-card {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-squircle);
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 108px;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease;
+      touch-action: none;
+      overflow: hidden;
+    }
+
+    .category-card:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .category-card:active,
+    .category-card.holding {
+      transform: scale(0.95);
+    }
+
+    .category-card.recording {
+      border-color: var(--card-color, var(--accent));
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25), var(--card-shadow);
+      animation: pulse-ring 1.4s infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 2px var(--card-color), var(--card-shadow); }
+      50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.0), 0 0 16px var(--card-color); }
+      100% { box-shadow: 0 0 0 2px var(--card-color), var(--card-shadow); }
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .category-icon-wrapper {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: rgba(120, 120, 128, 0.12);
+      transition: transform 0.2s ease;
+    }
+
+    .category-card.recording .category-icon-wrapper {
+      transform: scale(1.15);
+    }
+
+    .mic-badge {
+      opacity: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--card-color, var(--accent));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .category-card.recording .mic-badge {
+      opacity: 1;
+      transform: scale(1.1);
+      animation: mic-blink 0.8s ease infinite alternate;
+    }
+
+    @keyframes mic-blink {
+      from { transform: scale(1); }
+      to { transform: scale(1.25); }
+    }
+
+    .card-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 10px;
+    }
+
+    .category-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .category-amount {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: -0.3px;
+    }
+
+    .card-color-stripe {
+      position: absolute;
+      bottom: 0;
+      left: 12px;
+      right: 12px;
+      height: 3px;
+      border-radius: 2px 2px 0 0;
+      background: var(--card-color, #999);
+      opacity: 0.85;
+    }
+
+    .ptt-hint {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin: 2px 0 4px 0;
+    }
+
+    /* Dynamic Island Toast (Apple Floating Capsule) */
+    .dynamic-island {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 16px) + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(-150px) scale(0.9);
+      width: calc(100% - 24px);
+      max-width: 420px;
+      background: var(--island-bg);
+      color: var(--island-text);
+      border-radius: 30px;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+      z-index: 999;
+      transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+
+    .dynamic-island.visible {
+      transform: translateX(-50%) translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .island-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .island-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .island-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .island-details {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .island-category {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-tertiary);
+    }
+
+    .island-desc {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .island-amount {
+      font-size: 18px;
+      font-weight: 800;
+      color: #34C759;
+      flex-shrink: 0;
+    }
+
+    .island-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .island-btn {
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+
+    .island-btn:active {
+      opacity: 0.7;
+    }
+
+    .island-btn-cancel {
+      background: rgba(255, 59, 48, 0.25);
+      color: #FF453A;
+    }
+
+    .island-btn-edit {
+      background: rgba(255, 255, 255, 0.18);
+      color: #FFFFFF;
+    }
+
+    .island-progress {
+      height: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .island-progress-fill {
+      height: 100%;
+      background: #34C759;
+      width: 100%;
+      transition: width 3s linear;
+    }
+
+    /* History Feed */
+    .history-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    .history-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .history-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--pill-container-bg);
+      padding: 3px 8px;
+      border-radius: 10px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--card-shadow);
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .history-item:active {
+      transform: scale(0.98);
+      background: var(--bg-card-hover);
+    }
+
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .item-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(120, 120, 128, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      flex-shrink: 0;
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .item-desc {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 6px;
+    }
+
+    .item-amount {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--text-secondary);
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      border: 1px dashed var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 4px;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      font-weight: 500;
+      max-width: 260px;
+      line-height: 1.4;
+    }
+
+    /* Modal Sheet Styling (iOS Bottom Sheet) */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-modal);
+      border-radius: 26px 26px 0 0;
+      padding: 16px 20px calc(env(safe-area-inset-bottom, 20px) + 16px) 20px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.17, 0.89, 0.32, 1);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-overlay.open .modal-sheet {
+      transform: translateY(0);
+    }
+
+    .modal-drag-handle {
+      width: 36px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--text-tertiary);
+      margin: 0 auto 14px auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .modal-close-btn {
+      background: var(--bg-input);
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 15px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .form-input {
+      background: var(--bg-input);
+      border: 1px solid transparent;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      width: 100%;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent);
+    }
+
+    .amount-input-lg {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-align: center;
+    }
+
+    .category-pills-selector {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .cat-pill {
+      background: var(--bg-input);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .cat-pill.selected {
+      border-color: var(--accent);
+      background: rgba(0, 122, 255, 0.12);
+    }
+
+    .cat-pill-icon {
+      font-size: 18px;
+    }
+
+    .cat-pill-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .btn-primary {
+      flex: 1;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 14px 0;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 15px;
+      padding: 14px 18px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-danger {
+      background: rgba(255, 59, 48, 0.15);
+      color: var(--danger);
+      font-weight: 600;
+      font-size: 15px;
+      padding: 14px 18px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+
+    /* Category Settings List */
+    .cat-settings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .cat-setting-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      padding: 8px 12px;
+      border-radius: 12px;
+    }
+
+    .cat-setting-emoji {
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+      text-align: center;
+      border: none;
+      background: transparent;
+    }
+
+    .cat-setting-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .cat-setting-color {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: none;
+    }
+
+    /* Voice overlay / Wave Visualizer */
+    .recording-overlay {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: rgba(0, 0, 0, 0.88);
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 998;
+      transition: transform 0.3s cubic-bezier(0.17, 0.89, 0.32, 1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      pointer-events: none;
+    }
+
+    .recording-overlay.active {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .wave-bars {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 20px;
+    }
+
+    .wave-bar {
+      width: 3px;
+      background: #FF3B30;
+      border-radius: 2px;
+      animation: wave-anim 0.6s ease-in-out infinite alternate;
+    }
+
+    .wave-bar:nth-child(1) { height: 8px; animation-delay: 0.1s; }
+    .wave-bar:nth-child(2) { height: 16px; animation-delay: 0.25s; }
+    .wave-bar:nth-child(3) { height: 22px; animation-delay: 0.15s; }
+    .wave-bar:nth-child(4) { height: 14px; animation-delay: 0.3s; }
+    .wave-bar:nth-child(5) { height: 8px; animation-delay: 0.05s; }
+
+    @keyframes wave-anim {
+      0% { transform: scaleY(0.4); }
+      100% { transform: scaleY(1.3); }
+    }
+
+    /* Simulation chips */
+    .sim-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .sim-chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .sim-chip:active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Floating quick add button */
+    .fab-quick-add {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 20px) + 16px);
+      right: 20px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 300;
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.4);
+      cursor: pointer;
+      border: none;
+      z-index: 100;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .fab-quick-add:active {
+      transform: scale(0.9);
+    }
+
+    /* Utilities */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Island Notification Toast (Apple Dynamic Island style) -->
+  <div id="dynamicIsland" class="dynamic-island">
+    <div class="island-main">
+      <div class="island-left">
+        <span id="islandIcon" class="island-icon">🛒</span>
+        <div class="island-details">
+          <span id="islandCategory" class="island-category">Продукты</span>
+          <span id="islandDesc" class="island-desc">Хлеб и молоко</span>
+        </div>
+      </div>
+      <span id="islandAmount" class="island-amount">+430 ₽</span>
+    </div>
+    <div class="island-actions">
+      <button id="islandBtnCancel" class="island-btn island-btn-cancel">Отменить</button>
+      <button id="islandBtnEdit" class="island-btn island-btn-edit">Править</button>
+    </div>
+    <div class="island-progress">
+      <div id="islandProgressFill" class="island-progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- Voice Recording Overlay -->
+  <div id="recordingOverlay" class="recording-overlay">
+    <div class="wave-bars">
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+    </div>
+    <span id="recordingText" style="font-size: 13px; font-weight: 600;">Слушаю фразу... («430 хлеб»)</span>
+  </div>
+
+  <div class="app-container">
+
+    <!-- Header Section -->
+    <header class="header">
+      <div class="top-bar">
+        <div class="app-title-group">
+          <span class="app-logo">🎙️</span>
+          <h1 class="app-title">Voice Expense</h1>
+        </div>
+        <div class="top-actions">
+          <button id="btnVoiceSim" class="icon-btn" title="Тест голосового парсера">✨</button>
+          <button id="btnThemeToggle" class="icon-btn" title="Переключить тему">🌓</button>
+          <button id="btnSettings" class="icon-btn" title="Настройки категорий">⚙️</button>
+          <button id="btnBackup" class="icon-btn" title="Экспорт и Резервная копия">📤</button>
+        </div>
+      </div>
+
+      <!-- Balance Card -->
+      <div class="balance-card">
+        <div id="balanceLabel" class="balance-label">Расходы за сегодня</div>
+        <div class="balance-amount">
+          <span id="totalBalanceAmount">0</span>
+          <span class="currency-symbol">₽</span>
+        </div>
+        <div id="balanceSubtext" class="balance-subtext">Всего операций: 0</div>
+      </div>
+
+      <!-- Period Filter Segmented Control -->
+      <div class="period-segmented">
+        <button class="period-btn active" data-period="today">Сегодня</button>
+        <button class="period-btn" data-period="week">Неделя</button>
+        <button class="period-btn" data-period="month">Месяц</button>
+        <button class="period-btn" data-period="all">Всё время</button>
+      </div>
+    </header>
+
+    <!-- Segmented Proportion Bar (Apple Battery / Storage style) -->
+    <section class="stats-section">
+      <div id="segmentedBar" class="segmented-bar">
+        <!-- Segments inserted dynamically -->
+      </div>
+      <div id="statsLegend" class="stats-legend">
+        <!-- Legend dots inserted dynamically -->
+      </div>
+    </section>
+
+    <!-- 8 Categories Push-to-Talk Grid -->
+    <section>
+      <div class="ptt-hint">
+        <span>⚡ <b>Удерживайте</b> для голоса</span> • <span><b>Тап</b> для ввода</span>
+      </div>
+      <div id="categoriesGrid" class="categories-grid">
+        <!-- 8 category cards generated via JS -->
+      </div>
+    </section>
+
+    <!-- Recent Expenses Feed -->
+    <section class="history-section">
+      <div class="history-header">
+        <h2 class="history-title">История расходов</h2>
+        <span id="historyCountBadge" class="history-count">0</span>
+      </div>
+      <div id="historyList" class="history-list">
+        <!-- Transactions generated via JS -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Floating Add Button for quick manual entry -->
+  <button id="fabAdd" class="fab-quick-add" title="Быстрый ручной ввод">+</button>
+
+  <!-- MODAL: Quick Add / Edit Transaction -->
+  <div id="modalEdit" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 id="modalEditTitle" class="modal-title">Добавить расход</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalEdit')">✕</button>
+      </div>
+
+      <form id="formExpense" onsubmit="event.preventDefault(); saveExpenseFromModal();">
+        <input type="hidden" id="editExpenseId">
+
+        <div class="form-group">
+          <label class="form-label">Сумма (₽)</label>
+          <input type="number" step="any" id="inputAmount" class="form-input amount-input-lg" placeholder="0" required inputmode="decimal" autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Описание</label>
+          <input type="text" id="inputDesc" class="form-input" placeholder="Например: Капучино, Хлеб, Такси" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Категория</label>
+          <div id="modalCategoryPills" class="category-pills-selector">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Дата и время</label>
+          <input type="datetime-local" id="inputDateTime" class="form-input">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnDeleteExpense" class="btn-danger hidden" onclick="deleteCurrentEditingExpense()">Удалить</button>
+          <button type="submit" class="btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Voice Simulator / Test Phrases -->
+  <div id="modalSim" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Тест голосового парсера</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalSim')">✕</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+        Здесь можно протестировать алгоритм распознавания речи без использования реального микрофона:
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Выберите категорию для симуляции</label>
+        <div id="simCategoryPills" class="category-pills-selector" style="margin-bottom: 8px;">
+          <!-- Category selection for simulation -->
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Фраза для разбора</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="inputSimPhrase" class="form-input" placeholder="Например: 430 хлеб" value="430 хлеб">
+          <button type="button" class="btn-primary" style="flex: 0 0 90px;" onclick="executeSimPhrase()">Пуск</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Готовые примеры (кликните для проверки):</label>
+        <div class="sim-chips">
+          <div class="sim-chip" onclick="applySimChip('430 хлеб', 'cat_groceries')">🛒 430 хлеб</div>
+          <div class="sim-chip" onclick="applySimChip('капучино и круассан 320', 'cat_cafe')">☕ капучино и круассан 320</div>
+          <div class="sim-chip" onclick="applySimChip('такси до дома 650', 'cat_transport')">🚕 такси до дома 650</div>
+          <div class="sim-chip" onclick="applySimChip('такси за полторы тысячи рублей', 'cat_transport')">🚕 полторы тысячи такси</div>
+          <div class="sim-chip" onclick="applySimChip('двести аптека', 'cat_health')">💊 двести аптека</div>
+          <div class="sim-chip" onclick="applySimChip('косарь на бензин', 'cat_transport')">🚕 косарь на бензин</div>
+          <div class="sim-chip" onclick="applySimChip('сотка на чай', 'cat_cafe')">☕ сотка на чай</div>
+          <div class="sim-chip" onclick="applySimChip('кино и попкорн 850', 'cat_leisure')">🍿 кино и попкорн 850</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Microphone Help / Secure Context Notice -->
+  <div id="modalMicHelp" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">🎙️ Доступ к микрофону</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalMicHelp')">✕</button>
+      </div>
+
+      <div style="font-size: 14px; line-height: 1.5; color: var(--text-primary); display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+        <div style="background: rgba(255, 149, 0, 0.12); border-left: 4px solid #FF9500; padding: 10px 12px; border-radius: 8px;">
+          <b>Почему микрофон заблокирован?</b><br>
+          Мобильные браузеры (Chrome, Яндекс и др.) по правилам безопасности блокируют доступ к микрофону при открытии файла из Проводника (схема <code>content://</code> или <code>file://</code>). Для работы микрофона браузеру обязательно требуется протокол <b>HTTPS</b>.
+        </div>
+
+        <div>
+          <b>Как включить голосовой ввод на телефоне:</b>
+          <ol style="margin-left: 20px; margin-top: 6px; display: flex; flex-direction: column; gap: 6px;">
+            <li>Загрузите файл <code>index.html</code> на любой бесплатный статический хостинг с HTTPS (например, <b>GitHub Pages</b>, <b>Netlify Drop</b> или <b>Cloudflare Pages</b>).</li>
+            <li>Откройте полученную <b>https://...</b> ссылку на телефоне.</li>
+            <li>При первом зажатии кнопки браузер спросит <i>«Разрешить доступ к микрофону?»</i> — нажмите <b>«Разрешить»</b>.</li>
+            <li>Нажмите в меню браузера <i>«Добавить на главный экран»</i> — приложение развернётся на весь экран без адресной строки как нативное PWA.</li>
+          </ol>
+        </div>
+
+        <div style="background: var(--bg-input); padding: 10px 12px; border-radius: 10px;">
+          💡 <b>Прямо сейчас без HTTPS:</b><br>
+          Используйте <b>быстрый короткий тап</b> по любой категории для моментального ручного ввода суммы или кнопку <b>✨</b> в шапке для теста распознавания готовыми фразами.
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" onclick="closeModal('modalMicHelp')">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Category Settings -->
+  <div id="modalSettings" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Настройки категорий</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalSettings')">✕</button>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+        Вы можете переименовать любую из 8 категорий, сменить эмодзи или цвет:
+      </p>
+
+      <div id="catSettingsList" class="cat-settings-list">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="resetCategoriesToDefault()">Сбросить по умолчанию</button>
+        <button type="button" class="btn-primary" onclick="saveCategoriesSettings()">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Backup & Export -->
+  <div id="modalBackup" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Экспорт и резервная копия</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalBackup')">✕</button>
+      </div>
+
+      <div class="form-group" style="gap: 10px;">
+        <button type="button" class="btn-primary" onclick="exportToCSV()" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span>📊</span> Скачать CSV (Excel / Numbers)
+        </button>
+        <button type="button" class="btn-secondary" onclick="exportToJSON()" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span>💾</span> Сохранить резервную копию (JSON)
+        </button>
+      </div>
+
+      <hr style="border: none; border-top: 1px solid var(--border-subtle); margin: 16px 0;">
+
+      <div class="form-group">
+        <label class="form-label">Восстановление из резервной копии</label>
+        <input type="file" id="fileImportBackup" accept=".json" onchange="importFromJSON(event)" style="display: none;">
+        <button type="button" class="btn-secondary" onclick="document.getElementById('fileImportBackup').click()" style="width: 100%;">
+          📥 Загрузить файл резервной копии...
+        </button>
+      </div>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <button type="button" class="btn-danger" onclick="clearAllData()" style="width: 100%;">
+          🗑️ Очистить все расходы
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. DATA STRUCTURE & INITIAL STATE
+       ========================================================================== */
+    const STORAGE_KEY_TRANSACTIONS = 'voice_expense_txs_v1';
+    const STORAGE_KEY_CATEGORIES = 'voice_expense_cats_v1';
+    const STORAGE_KEY_THEME = 'voice_expense_theme_v1';
+
+    const DEFAULT_CATEGORIES = [
+      { id: 'cat_groceries', name: 'Продукты', icon: '🛒', color: '#34C759' },
+      { id: 'cat_cafe',      name: 'Кафе',     icon: '☕', color: '#FF9500' },
+      { id: 'cat_transport', name: 'Транспорт',icon: '🚕', color: '#007AFF' },
+      { id: 'cat_home',      name: 'Дом',      icon: '🏠', color: '#5856D6' },
+      { id: 'cat_shopping',  name: 'Покупки',  icon: '🛍️', color: '#AF52DE' },
+      { id: 'cat_health',    name: 'Здоровье', icon: '💊', color: '#FF2D55' },
+      { id: 'cat_leisure',   name: 'Досуг',    icon: '🍿', color: '#FFCC00' },
+      { id: 'cat_other',     name: 'Разное',   icon: '📦', color: '#8E8E93' }
+    ];
+
+    const DEMO_TRANSACTIONS = [
+      { id: 'tx_1', categoryId: 'cat_groceries', amount: 430, description: 'Хлеб, сыр, молоко', timestamp: Date.now() - 1000 * 60 * 45 },
+      { id: 'tx_2', categoryId: 'cat_cafe',      amount: 250, description: 'Капучино и круассан', timestamp: Date.now() - 1000 * 60 * 120 },
+      { id: 'tx_3', categoryId: 'cat_transport', amount: 380, description: 'Такси в офис', timestamp: Date.now() - 1000 * 60 * 360 },
+      { id: 'tx_4', categoryId: 'cat_shopping',  amount: 1450, description: 'Книга и блокнот', timestamp: Date.now() - 1000 * 60 * 60 * 26 }
+    ];
+
+    let state = {
+      categories: [],
+      transactions: [],
+      currentPeriod: 'today',
+      selectedModalCategoryId: null,
+      selectedSimCategoryId: null,
+      pendingIslandTransaction: null,
+      islandTimer: null
+    };
+
+    /* ==========================================================================
+       2. SPEECH PARSER ENGINE (RUSSIAN NUMBERS & PHRASES)
+       ========================================================================== */
+    const NUM_WORDS = {
+      'ноль': 0, 'нуль': 0,
+      'один': 1, 'одна': 1, 'одну': 1,
+      'два': 2, 'две': 2,
+      'три': 3,
+      'четыре': 4,
+      'пять': 5,
+      'шесть': 6,
+      'семь': 7,
+      'восемь': 8,
+      'девять': 9,
+      'десять': 10,
+      'одиннадцать': 11, 'двенадцать': 12, 'тринадцать': 13, 'четырнадцать': 14,
+      'пятнадцать': 15, 'шестнадцать': 16, 'семнадцать': 17, 'восемнадцать': 18, 'девятнадцать': 19,
+      'двадцать': 20, 'тридцать': 30, 'сорок': 40, 'пятьдесят': 50,
+      'шестьдесят': 60, 'семьдесят': 70, 'восемьдесят': 80, 'девяносто': 90,
+      'сто': 100, 'ста': 100, 'двести': 200, 'триста': 300, 'четыреста': 400,
+      'пятьсот': 500, 'шестьсот': 600, 'семьсот': 700, 'восемьсот': 800, 'девятьсот': 900,
+      'сотка': 100, 'сотку': 100, 'сотен': 100,
+      'пятихатка': 500, 'пятихатку': 500,
+      'косарь': 1000, 'косаря': 1000, 'косарей': 1000, 'штука': 1000, 'штуку': 1000, 'штуки': 1000, 'тыща': 1000, 'тыщу': 1000,
+      'тысяча': 1000, 'тысячи': 1000, 'тысяч': 1000,
+      'миллион': 1000000, 'миллиона': 1000000, 'миллионов': 1000000
+    };
+
+    function isNumWord(w) {
+      return NUM_WORDS[w] !== undefined || w === 'полторы' || w === 'полтора' || w === 'полтораста';
+    }
+
+    function wordsToNumber(words) {
+      for (const w of words) {
+        if (!isNumWord(w)) return null;
+      }
+      let total = 0;
+      let current = 0;
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i];
+        if (w === 'полторы' || w === 'полтора') {
+          if (i + 1 < words.length && (words[i + 1].startsWith('тысяч') || words[i + 1].startsWith('тыщ'))) {
+            current += 1500;
+            i++;
+          } else {
+            current += 1.5;
+          }
+          continue;
+        }
+        if (w === 'полтораста') {
+          current += 150;
+          continue;
+        }
+        const val = NUM_WORDS[w];
+        if (val === 1000 || val === 1000000) {
+          if (current === 0) current = 1;
+          total += current * val;
+          current = 0;
+        } else {
+          current += val;
+        }
+      }
+      return total + current;
+    }
+
+    function parseVoiceExpense(rawText) {
+      if (!rawText || !rawText.trim()) {
+        return { amount: 0, description: '', raw: '' };
+      }
+
+      let text = rawText.trim().toLowerCase();
+      text = text.replace(/[,;]/g, ' ')
+                 .replace(/[₽]/g, ' руб ')
+                 .replace(/\s+/g, ' ')
+                 .trim();
+
+      const digitRegex = /\b(\d+(?:[.,]\d+)?)\b/;
+      const digitMatch = text.match(digitRegex);
+
+      let extractedAmount = 0;
+      let remainingText = text;
+
+      if (digitMatch) {
+        const numStr = digitMatch[1].replace(',', '.');
+        const parsedNum = parseFloat(numStr);
+        if (!isNaN(parsedNum) && parsedNum > 0) {
+          extractedAmount = parsedNum;
+          remainingText = text.replace(digitRegex, ' ');
+        }
+      }
+
+      if (!extractedAmount) {
+        const tokens = text.split(' ').filter(Boolean);
+        let bestNum = 0;
+        let bestSlice = null;
+
+        for (let len = tokens.length; len >= 1; len--) {
+          for (let start = 0; start <= tokens.length - len; start++) {
+            const end = start + len;
+            const slice = tokens.slice(start, end);
+            const num = wordsToNumber(slice);
+            if (num !== null && num > 0) {
+              bestNum = num;
+              bestSlice = { start, end };
+              break;
+            }
+          }
+          if (bestSlice) break;
+        }
+
+        if (bestNum > 0 && bestSlice) {
+          extractedAmount = bestNum;
+          const before = tokens.slice(0, bestSlice.start);
+          const after = tokens.slice(bestSlice.end);
+          remainingText = [...before, ...after].join(' ');
+        }
+      }
+
+      let cleanedDesc = remainingText
+        .replace(/(^|\s)(рублей|рубля|рубль|руб|р|₽)($|\s)/gi, ' ')
+        .replace(/(^|\s)(за|на сумму|стоимостью|по цене|в размере|купил|купила|оплатил|оплатила)($|\s)/gi, ' ')
+        .replace(/(^|\s)(на)($|\s)/gi, ' ')
+        .replace(/[.,!?;:()"]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (cleanedDesc.length > 0) {
+        cleanedDesc = cleanedDesc.charAt(0).toUpperCase() + cleanedDesc.slice(1);
+      }
+
+      return {
+        amount: extractedAmount,
+        description: cleanedDesc,
+        raw: rawText
+      };
+    }
+
+    /* ==========================================================================
+       3. STORAGE & DATA MANAGEMENT
+       ========================================================================== */
+    function loadData() {
+      try {
+        const storedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES);
+        state.categories = storedCats ? JSON.parse(storedCats) : [...DEFAULT_CATEGORIES];
+
+        const storedTxs = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
+        state.transactions = storedTxs ? JSON.parse(storedTxs) : [...DEMO_TRANSACTIONS];
+      } catch (e) {
+        console.error('Error loading data:', e);
+        state.categories = [...DEFAULT_CATEGORIES];
+        state.transactions = [...DEMO_TRANSACTIONS];
+      }
+    }
+
+    function saveTransactions() {
+      localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(state.transactions));
+      render();
+    }
+
+    function saveCategories() {
+      localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
+      render();
+    }
+
+    /* Filter transactions by period */
+    function getFilteredTransactions() {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      
+      // Start of week (Monday)
+      const dayOfWeek = now.getDay() || 7;
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1).getTime();
+
+      // Start of month
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+      return state.transactions.filter(tx => {
+        const time = tx.timestamp;
+        if (state.currentPeriod === 'today') return time >= startOfToday;
+        if (state.currentPeriod === 'week') return time >= startOfWeek;
+        if (state.currentPeriod === 'month') return time >= startOfMonth;
+        return true;
+      });
+    }
+
+    /* ==========================================================================
+       4. SPEECH RECOGNITION & PUSH-TO-TALK
+       ========================================================================== */
+    let recognition = null;
+    let isRecognizing = false;
+    let activePressCategoryId = null;
+    let pressTimer = null;
+    let isLongPress = false;
+
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn('Web Speech API is not supported in this browser.');
+        return null;
+      }
+      const rec = new SpeechRecognition();
+      rec.lang = 'ru-RU';
+      rec.continuous = false;
+      rec.interimResults = false;
+
+      rec.onstart = () => {
+        isRecognizing = true;
+        showRecordingOverlay(true);
+      };
+
+      rec.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log('Recognized speech:', transcript);
+        handleSpeechResult(transcript);
+      };
+
+      rec.onerror = (event) => {
+        console.warn('Speech recognition error:', event.error);
+        showRecordingOverlay(false);
+        if (event.error === 'not-allowed') {
+          openModal('modalMicHelp');
+        }
+      };
+
+      rec.onend = () => {
+        isRecognizing = false;
+        showRecordingOverlay(false);
+        clearHoldingStyles();
+      };
+
+      return rec;
+    }
+
+    recognition = initSpeechRecognition();
+
+    function showRecordingOverlay(show, text = null) {
+      const el = document.getElementById('recordingOverlay');
+      if (text) document.getElementById('recordingText').innerText = text;
+      if (show) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    }
+
+    function clearHoldingStyles() {
+      document.querySelectorAll('.category-card').forEach(c => {
+        c.classList.remove('recording', 'holding');
+      });
+    }
+
+    function handleSpeechResult(transcript, overrideCatId = null) {
+      const targetCatId = overrideCatId || activePressCategoryId;
+      if (!targetCatId) return;
+
+      const parsed = parseVoiceExpense(transcript);
+      const cat = state.categories.find(c => c.id === targetCatId);
+
+      if (parsed.amount <= 0) {
+        // Fallback: If amount wasn't recognized, open manual modal with recognized description!
+        openAddEditModal(null, targetCatId, parsed.description || '');
+        return;
+      }
+
+      // Show in Dynamic Island
+      const tx = {
+        id: 'tx_' + Date.now(),
+        categoryId: targetCatId,
+        amount: parsed.amount,
+        description: parsed.description || cat.name,
+        timestamp: Date.now()
+      };
+
+      triggerDynamicIsland(tx, cat);
+    }
+
+    function startPressCategory(catId, cardEl) {
+      activePressCategoryId = catId;
+      isLongPress = false;
+      cardEl.classList.add('holding');
+
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        cardEl.classList.add('recording');
+        if (navigator.vibrate) navigator.vibrate(50);
+
+        if (recognition) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.log('Recognition start issue:', e);
+          }
+        } else {
+          showRecordingOverlay(true, 'Микрофон недоступен. Используйте ручной тап или симулятор ✨');
+          setTimeout(() => showRecordingOverlay(false), 2400);
+        }
+      }, 300);
+    }
+
+    function endPressCategory(catId, cardEl) {
+      clearTimeout(pressTimer);
+      cardEl.classList.remove('holding');
+
+      if (!isLongPress) {
+        // Short tap -> Open Quick Manual Entry Modal
+        clearHoldingStyles();
+        openAddEditModal(null, catId);
+      } else {
+        // Was holding -> Stop recording & await result
+        if (recognition && isRecognizing) {
+          try {
+            recognition.stop();
+          } catch (e) {}
+        }
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+    }
+
+    /* ==========================================================================
+       5. DYNAMIC ISLAND (APPLE STYLE FLOATING TOAST)
+       ========================================================================== */
+    function triggerDynamicIsland(tx, category) {
+      commitPendingIslandTransaction();
+
+      state.pendingIslandTransaction = tx;
+
+      const island = document.getElementById('dynamicIsland');
+      const iconEl = document.getElementById('islandIcon');
+      const catEl = document.getElementById('islandCategory');
+      const descEl = document.getElementById('islandDesc');
+      const amountEl = document.getElementById('islandAmount');
+      const progressFill = document.getElementById('islandProgressFill');
+
+      iconEl.textContent = category.icon;
+      catEl.textContent = category.name;
+      descEl.textContent = tx.description;
+      amountEl.textContent = `+${tx.amount.toLocaleString('ru-RU')} ₽`;
+
+      // Reset progress bar animation
+      progressFill.style.transition = 'none';
+      progressFill.style.width = '100%';
+      void progressFill.offsetWidth;
+      progressFill.style.transition = 'width 3s linear';
+      progressFill.style.width = '0%';
+
+      island.classList.add('visible');
+
+      // Schedule commit after 3 seconds
+      state.islandTimer = setTimeout(() => {
+        commitPendingIslandTransaction();
+      }, 3000);
+    }
+
+    function commitPendingIslandTransaction() {
+      if (state.islandTimer) {
+        clearTimeout(state.islandTimer);
+        state.islandTimer = null;
+      }
+      if (state.pendingIslandTransaction) {
+        state.transactions.unshift(state.pendingIslandTransaction);
+        state.pendingIslandTransaction = null;
+        saveTransactions();
+      }
+      hideDynamicIsland();
+    }
+
+    function cancelPendingIslandTransaction() {
+      if (state.islandTimer) {
+        clearTimeout(state.islandTimer);
+        state.islandTimer = null;
+      }
+      state.pendingIslandTransaction = null;
+      hideDynamicIsland();
+    }
+
+    function hideDynamicIsland() {
+      const island = document.getElementById('dynamicIsland');
+      island.classList.remove('visible');
+    }
+
+    document.getElementById('islandBtnCancel').addEventListener('click', () => {
+      cancelPendingIslandTransaction();
+    });
+
+    document.getElementById('islandBtnEdit').addEventListener('click', () => {
+      const pending = state.pendingIslandTransaction;
+      if (pending) {
+        cancelPendingIslandTransaction();
+        openAddEditModal(null, pending.categoryId, pending.description, pending.amount);
+      }
+    });
+
+    /* ==========================================================================
+       6. RENDER LOGIC
+       ========================================================================== */
+    function formatCurrency(num) {
+      return num.toLocaleString('ru-RU');
+    }
+
+    function formatDate(ts) {
+      const d = new Date(ts);
+      const today = new Date();
+      const isToday = d.toDateString() === today.toDateString();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+
+      if (isToday) {
+        return `Сегодня, ${hours}:${mins}`;
+      }
+      const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      const dayName = days[d.getDay()];
+      return `${dayName}, ${d.getDate()}.${d.getMonth() + 1} ${hours}:${mins}`;
+    }
+
+    function render() {
+      const filtered = getFilteredTransactions();
+
+      // 1. Calculate totals
+      const totalAmount = filtered.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+      document.getElementById('totalBalanceAmount').textContent = formatCurrency(totalAmount);
+      document.getElementById('balanceSubtext').textContent = `Всего операций: ${filtered.length}`;
+
+      // Update Period Title
+      const periodLabels = {
+        today: 'Расходы за сегодня',
+        week: 'Расходы за эту неделю',
+        month: 'Расходы за этот месяц',
+        all: 'Все расходы за всё время'
+      };
+      document.getElementById('balanceLabel').textContent = periodLabels[state.currentPeriod];
+
+      // 2. Render 8 Categories Grid
+      const grid = document.getElementById('categoriesGrid');
+      grid.innerHTML = '';
+
+      // Calculate totals per category in filtered period
+      const catTotals = {};
+      state.categories.forEach(c => catTotals[c.id] = 0);
+      filtered.forEach(tx => {
+        if (catTotals[tx.categoryId] !== undefined) {
+          catTotals[tx.categoryId] += Number(tx.amount || 0);
+        }
+      });
+
+      state.categories.forEach(cat => {
+        const spent = catTotals[cat.id] || 0;
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        card.style.setProperty('--card-color', cat.color);
+        card.innerHTML = `
+          <div class="card-color-stripe"></div>
+          <div class="card-top">
+            <div class="category-icon-wrapper">${cat.icon}</div>
+            <div class="mic-badge">🎙️</div>
+          </div>
+          <div class="card-bottom">
+            <span class="category-name">${cat.name}</span>
+            <span class="category-amount">${formatCurrency(spent)} ₽</span>
+          </div>
+        `;
+
+        // Touch & Mouse Push-to-Talk Events
+        card.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          startPressCategory(cat.id, card);
+        });
+
+        card.addEventListener('pointerup', (e) => {
+          e.preventDefault();
+          endPressCategory(cat.id, card);
+        });
+
+        card.addEventListener('pointercancel', () => {
+          clearTimeout(pressTimer);
+          card.classList.remove('holding', 'recording');
+        });
+
+        card.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        grid.appendChild(card);
+      });
+
+      // 3. Render Segmented Progress Bar & Legend
+      const bar = document.getElementById('segmentedBar');
+      const legend = document.getElementById('statsLegend');
+      bar.innerHTML = '';
+      legend.innerHTML = '';
+
+      if (totalAmount > 0) {
+        state.categories.forEach(cat => {
+          const spent = catTotals[cat.id] || 0;
+          if (spent > 0) {
+            const percent = ((spent / totalAmount) * 100);
+            
+            // Segment
+            const seg = document.createElement('div');
+            seg.className = 'bar-segment';
+            seg.style.width = `${percent}%`;
+            seg.style.backgroundColor = cat.color;
+            seg.title = `${cat.name}: ${formatCurrency(spent)} ₽ (${percent.toFixed(0)}%)`;
+            bar.appendChild(seg);
+
+            // Legend item
+            const leg = document.createElement('div');
+            leg.className = 'legend-item';
+            leg.innerHTML = `
+              <span class="legend-dot" style="background-color: ${cat.color};"></span>
+              <span>${cat.name} (${percent.toFixed(0)}%)</span>
+            `;
+            legend.appendChild(leg);
+          }
+        });
+      } else {
+        bar.innerHTML = '<div style="width:100%; height:100%; background:rgba(120,120,128,0.2);"></div>';
+        legend.innerHTML = '<span style="font-size:12px; color:var(--text-tertiary);">Нет расходов за выбранный период</span>';
+      }
+
+      // 4. Render History List
+      const historyList = document.getElementById('historyList');
+      document.getElementById('historyCountBadge').textContent = filtered.length;
+      historyList.innerHTML = '';
+
+      if (filtered.length === 0) {
+        historyList.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">🍃</span>
+            <span class="empty-text">Нет операций за этот период.<br>Зажмите карточку категории и назовите трату!</span>
+          </div>
+        `;
+      } else {
+        const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
+        sorted.forEach(tx => {
+          const cat = state.categories.find(c => c.id === tx.categoryId) || { name: 'Другое', icon: '📦', color: '#8E8E93' };
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          item.innerHTML = `
+            <div class="item-left">
+              <div class="item-icon" style="color: ${cat.color};">${cat.icon}</div>
+              <div class="item-info">
+                <span class="item-desc">${escapeHtml(tx.description)}</span>
+                <span class="item-meta">
+                  <span>${cat.name}</span> • <span>${formatDate(tx.timestamp)}</span>
+                </span>
+              </div>
+            </div>
+            <span class="item-amount">-${formatCurrency(Number(tx.amount))} ₽</span>
+          `;
+          item.addEventListener('click', () => {
+            openAddEditModal(tx.id);
+          });
+          historyList.appendChild(item);
+        });
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* ==========================================================================
+       7. MODALS LOGIC (ADD / EDIT EXPENSE, SETTINGS, BACKUP, SIMULATOR)
+       ========================================================================== */
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('open');
+        }
+      });
+    });
+
+    /* Quick Add / Edit Expense Modal */
+    function openAddEditModal(txId = null, defaultCatId = null, prefillDesc = '', prefillAmount = '') {
+      const titleEl = document.getElementById('modalEditTitle');
+      const idInput = document.getElementById('editExpenseId');
+      const amountInput = document.getElementById('inputAmount');
+      const descInput = document.getElementById('inputDesc');
+      const dtInput = document.getElementById('inputDateTime');
+      const delBtn = document.getElementById('btnDeleteExpense');
+
+      idInput.value = txId || '';
+
+      if (txId) {
+        titleEl.textContent = 'Редактировать расход';
+        delBtn.classList.remove('hidden');
+        const tx = state.transactions.find(t => t.id === txId);
+        if (tx) {
+          amountInput.value = tx.amount;
+          descInput.value = tx.description;
+          state.selectedModalCategoryId = tx.categoryId;
+          
+          const dt = new Date(tx.timestamp);
+          dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+          dtInput.value = dt.toISOString().slice(0, 16);
+        }
+      } else {
+        titleEl.textContent = 'Добавить расход';
+        delBtn.classList.add('hidden');
+        amountInput.value = prefillAmount || '';
+        descInput.value = prefillDesc || '';
+        state.selectedModalCategoryId = defaultCatId || state.categories[0].id;
+        
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        dtInput.value = now.toISOString().slice(0, 16);
+      }
+
+      renderModalCategoryPills();
+      openModal('modalEdit');
+
+      setTimeout(() => {
+        if (!amountInput.value) {
+          amountInput.focus();
+        } else if (!descInput.value) {
+          descInput.focus();
+        }
+      }, 150);
+    }
+
+    function renderModalCategoryPills() {
+      const container = document.getElementById('modalCategoryPills');
+      container.innerHTML = '';
+      state.categories.forEach(cat => {
+        const pill = document.createElement('div');
+        pill.className = `cat-pill ${cat.id === state.selectedModalCategoryId ? 'selected' : ''}`;
+        pill.innerHTML = `
+          <span class="cat-pill-icon">${cat.icon}</span>
+          <span class="cat-pill-name">${cat.name}</span>
+        `;
+        pill.addEventListener('click', () => {
+          state.selectedModalCategoryId = cat.id;
+          renderModalCategoryPills();
+        });
+        container.appendChild(pill);
+      });
+    }
+
+    function saveExpenseFromModal() {
+      const id = document.getElementById('editExpenseId').value;
+      const amount = parseFloat(document.getElementById('inputAmount').value);
+      const desc = document.getElementById('inputDesc').value.trim();
+      const dtVal = document.getElementById('inputDateTime').value;
+      const timestamp = dtVal ? new Date(dtVal).getTime() : Date.now();
+
+      if (isNaN(amount) || amount <= 0) {
+        alert('Пожалуйста, введите корректную сумму.');
+        return;
+      }
+
+      if (id) {
+        const idx = state.transactions.findIndex(t => t.id === id);
+        if (idx !== -1) {
+          state.transactions[idx] = {
+            ...state.transactions[idx],
+            amount,
+            description: desc || state.categories.find(c => c.id === state.selectedModalCategoryId).name,
+            categoryId: state.selectedModalCategoryId,
+            timestamp
+          };
+        }
+      } else {
+        const newTx = {
+          id: 'tx_' + Date.now(),
+          amount,
+          description: desc || state.categories.find(c => c.id === state.selectedModalCategoryId).name,
+          categoryId: state.selectedModalCategoryId,
+          timestamp
+        };
+        state.transactions.unshift(newTx);
+      }
+
+      saveTransactions();
+      closeModal('modalEdit');
+    }
+
+    function deleteCurrentEditingExpense() {
+      const id = document.getElementById('editExpenseId').value;
+      if (id && confirm('Удалить эту запись о расходе?')) {
+        state.transactions = state.transactions.filter(t => t.id !== id);
+        saveTransactions();
+        closeModal('modalEdit');
+      }
+    }
+
+    /* Voice Simulation Modal */
+    function openVoiceSimulator() {
+      state.selectedSimCategoryId = state.categories[0].id;
+      renderSimCategoryPills();
+      openModal('modalSim');
+    }
+
+    function renderSimCategoryPills() {
+      const container = document.getElementById('simCategoryPills');
+      container.innerHTML = '';
+      state.categories.forEach(cat => {
+        const pill = document.createElement('div');
+        pill.className = `cat-pill ${cat.id === state.selectedSimCategoryId ? 'selected' : ''}`;
+        pill.innerHTML = `
+          <span class="cat-pill-icon">${cat.icon}</span>
+          <span class="cat-pill-name">${cat.name}</span>
+        `;
+        pill.addEventListener('click', () => {
+          state.selectedSimCategoryId = cat.id;
+          renderSimCategoryPills();
+        });
+        container.appendChild(pill);
+      });
+    }
+
+    function applySimChip(phrase, catId) {
+      document.getElementById('inputSimPhrase').value = phrase;
+      state.selectedSimCategoryId = catId;
+      renderSimCategoryPills();
+      executeSimPhrase();
+    }
+
+    function executeSimPhrase() {
+      const phrase = document.getElementById('inputSimPhrase').value.trim();
+      if (!phrase) return;
+      closeModal('modalSim');
+      handleSpeechResult(phrase, state.selectedSimCategoryId);
+    }
+
+    /* ==========================================================================
+       8. CATEGORY SETTINGS
+       ========================================================================== */
+    function openCategorySettings() {
+      const list = document.getElementById('catSettingsList');
+      list.innerHTML = '';
+
+      state.categories.forEach((cat, index) => {
+        const row = document.createElement('div');
+        row.className = 'cat-setting-row';
+        row.innerHTML = `
+          <input type="text" class="cat-setting-emoji" value="${cat.icon}" maxlength="2" data-idx="${index}">
+          <input type="text" class="cat-setting-name" value="${cat.name}" maxlength="20" data-idx="${index}">
+          <input type="color" class="cat-setting-color" value="${cat.color}" data-idx="${index}">
+        `;
+        list.appendChild(row);
+      });
+
+      openModal('modalSettings');
+    }
+
+    function saveCategoriesSettings() {
+      const emojis = document.querySelectorAll('.cat-setting-emoji');
+      const names = document.querySelectorAll('.cat-setting-name');
+      const colors = document.querySelectorAll('.cat-setting-color');
+
+      emojis.forEach((el, i) => {
+        state.categories[i].icon = el.value.trim() || '📦';
+        state.categories[i].name = names[i].value.trim() || `Категория ${i+1}`;
+        state.categories[i].color = colors[i].value;
+      });
+
+      saveCategories();
+      closeModal('modalSettings');
+    }
+
+    function resetCategoriesToDefault() {
+      if (confirm('Сбросить все 8 категорий к первоначальным названиям и цветам?')) {
+        state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        saveCategories();
+        openCategorySettings();
+      }
+    }
+
+    /* ==========================================================================
+       9. EXPORT & BACKUP (CSV, JSON, RESTORE)
+       ========================================================================== */
+    function exportToCSV() {
+      const catMap = {};
+      state.categories.forEach(c => catMap[c.id] = c.name);
+
+      // UTF-8 BOM + Semicolon delimiter (Standard for Russian Excel and Numbers)
+      let csvContent = '\uFEFFДата;Время;Категория;Описание;Сумма (₽)\r\n';
+
+      const sorted = [...state.transactions].sort((a, b) => b.timestamp - a.timestamp);
+      sorted.forEach(tx => {
+        const d = new Date(tx.timestamp);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        const catName = `"${(catMap[tx.categoryId] || 'Разное').replace(/"/g, '""')}"`;
+        const desc = `"${(tx.description || '').replace(/"/g, '""')}"`;
+        const amount = tx.amount;
+
+        csvContent += `${dateStr};${timeStr};${catName};${desc};${amount}\r\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `expenses_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportToJSON() {
+      const backupData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        categories: state.categories,
+        transactions: state.transactions
+      };
+
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `voice_expense_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function importFromJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data.transactions)) {
+            state.transactions = data.transactions;
+            if (Array.isArray(data.categories) && data.categories.length === 8) {
+              state.categories = data.categories;
+              localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
+            }
+            saveTransactions();
+            alert('Резервная копия успешно восстановлена!');
+            closeModal('modalBackup');
+          } else {
+            alert('Ошибка: неверный формат файла резервной копии.');
+          }
+        } catch (err) {
+          alert('Ошибка чтения файла JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function clearAllData() {
+      if (confirm('Вы уверены, что хотите удалить ВСЕ расходы? Это действие нельзя отменить.')) {
+        state.transactions = [];
+        saveTransactions();
+        closeModal('modalBackup');
+      }
+    }
+
+    /* ==========================================================================
+       10. THEME SWITCHER & APP INITIALIZATION
+       ========================================================================== */
+    function initTheme() {
+      const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+      if (savedTheme) {
+        setTheme(savedTheme);
+      } else {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+      }
+    }
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem(STORAGE_KEY_THEME, theme);
+      const meta = document.getElementById('meta-theme-color');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#F2F2F7');
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    // Attach Event Listeners
+    document.getElementById('btnThemeToggle').addEventListener('click', toggleTheme);
+    document.getElementById('btnSettings').addEventListener('click', openCategorySettings);
+    document.getElementById('btnBackup').addEventListener('click', () => openModal('modalBackup'));
+    document.getElementById('btnVoiceSim').addEventListener('click', openVoiceSimulator);
+    document.getElementById('fabAdd').addEventListener('click', () => openAddEditModal());
+
+    // Period buttons
+    document.querySelectorAll('.period-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        state.currentPeriod = e.target.dataset.period;
+        render();
+      });
+    });
+
+    // Initialize on page load
+    loadData();
+    initTheme();
+    render();
+
+    // Export test parser function to window for console verification
+    window.testVoiceExpenseParser = (phrase) => {
+      const res = parseVoiceExpense(phrase);
+      console.log(`[Voice Expense Parser] "${phrase}" =>`, res);
+      return res;
+    };
+  </script>
+</body>
+</html>
