@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest_g.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>Voice costs G v4.0 — Голосовой учёт расходов (Google Sheets Sync)</title>
+  <title>Voice costs G v4.0.1 — Голосовой учёт расходов (Google Sheets Sync)</title>
 
   <style>
     :root {
@@ -1196,7 +1196,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice costs G</h1>
-          <span class="app-version-badge">v4.0.0</span>
+          <span class="app-version-badge">v4.0.1</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -1414,6 +1414,20 @@
         <div class="form-group">
           <label class="form-label">URL веб-приложения Google Apps Script</label>
           <input type="url" id="inputGScriptUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="button" class="btn-secondary" onclick="checkGConnection(true)" style="flex:1; font-size:12px; padding:7px 10px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <span>🔗</span> Проверить связь
+          </button>
+          <button type="button" class="btn-secondary" onclick="saveManualGUrl()" style="flex:1; font-size:12px; padding:7px 10px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <span>💾</span> Сохранить URL
+          </button>
+        </div>
+
+        <div style="background: rgba(255, 59, 48, 0.08); border-left: 3px solid #FF3B30; border-radius: 8px; padding: 8px 10px; font-size: 11px; line-height: 1.4; margin-top: 10px; color: var(--text-primary);">
+          ⚠️ <b>ОЧЕНЬ ВАЖНО В GOOGLE APPS SCRIPT:</b><br>
+          При развертывании в поле <b>«У кого есть доступ» (Who has access)</b> обязательно выберите <b>«Все» (Anyone)</b>. Если оставить «Только я», Google блокирует запросы (ошибка 403 «Нет доступа») и таблица останется пустой!
         </div>
 
         <div class="form-group" style="margin-top: 12px; display:flex; align-items:center; justify-content:space-between;">
@@ -1725,7 +1739,7 @@
 
     
     /* ==========================================================================
-       GOOGLE SHEETS SYNC ENGINE (Voice costs G v4.0)
+       GOOGLE SHEETS SYNC ENGINE (Voice costs G v4.0.1)
        ========================================================================== */
     const STORAGE_KEY_G_URL = 'voice_g_script_url';
     const STORAGE_KEY_G_AUTOSYNC = 'voice_g_autosync';
@@ -1737,10 +1751,21 @@
       lastSync: Number(localStorage.getItem(STORAGE_KEY_G_LAST_SYNC) || 0)
     };
 
-    const GOOGLE_APPS_SCRIPT_TEMPLATE = `// Google Apps Script code for Voice costs G
+    const GOOGLE_APPS_SCRIPT_TEMPLATE = `// Google Apps Script для Voice costs G
+// Вставьте этот код в: Меню таблицы -> Расширения -> Apps Script
+
+function getSheet() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) return ss.getActiveSheet();
+  } catch(e) {}
+  // Резервный поиск по ID таблицы пользователя
+  return SpreadsheetApp.openById("1IHrVexufdaM8TJZ2UuotwygyBdEAXTxUoK-jvkYpVSg").getActiveSheet();
+}
+
 function doGet(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getSheet();
     var rows = sheet.getDataRange().getValues();
     if (rows.length <= 1) {
       return ContentService.createTextOutput(JSON.stringify({ status: "ok", transactions: [] }))
@@ -1768,12 +1793,12 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getSheet();
     var body = JSON.parse(e.postData.contents);
 
     if (body.action === 'sync_all') {
       sheet.clear();
-      sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма", "Описание", "Timestamp"]);
+      sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма (₽)", "Описание", "Timestamp"]);
       sheet.getRange(1, 1, 1, 7).setFontWeight("bold");
       if (body.transactions && body.transactions.length > 0) {
         var dataRows = body.transactions.map(function(tx) {
@@ -1788,7 +1813,7 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     } else if (body.action === 'add') {
       if (sheet.getLastRow() === 0) {
-        sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма", "Описание", "Timestamp"]);
+        sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма (₽)", "Описание", "Timestamp"]);
         sheet.getRange(1, 1, 1, 7).setFontWeight("bold");
       }
       var tx = body.transaction;
@@ -1812,7 +1837,7 @@ function doPost(e) {
       const icon = document.getElementById('gStatusIcon');
       const label = document.getElementById('gStatusText');
 
-      if (dot) dot.className = 'g-sync-dot ' + status;
+      if (dot) dot.className = 'g-sync-dot ' + (status || '');
       if (icon) {
         if (status === 'connected') icon.textContent = '🟢';
         else if (status === 'syncing') icon.textContent = '🔄';
@@ -1826,8 +1851,28 @@ function doPost(e) {
       const urlInput = document.getElementById('inputGScriptUrl');
       const autoSyncCheck = document.getElementById('checkboxGAutoSync');
 
-      if (urlInput) urlInput.value = gConfig.url;
-      if (autoSyncCheck) autoSyncCheck.checked = gConfig.autoSync;
+      if (urlInput) {
+        urlInput.value = gConfig.url;
+        urlInput.oninput = (e) => {
+          gConfig.url = e.target.value.trim();
+          localStorage.setItem(STORAGE_KEY_G_URL, gConfig.url);
+        };
+        urlInput.onchange = (e) => {
+          gConfig.url = e.target.value.trim();
+          localStorage.setItem(STORAGE_KEY_G_URL, gConfig.url);
+          checkGConnection(false);
+        };
+      }
+      if (autoSyncCheck) {
+        autoSyncCheck.checked = gConfig.autoSync;
+        autoSyncCheck.onchange = (e) => {
+          gConfig.autoSync = e.target.checked;
+          localStorage.setItem(STORAGE_KEY_G_AUTOSYNC, gConfig.autoSync ? 'true' : 'false');
+          if (gConfig.autoSync && gConfig.url) {
+            triggerGAutoSyncIfEnabled();
+          }
+        };
+      }
 
       if (gConfig.url) {
         const lastDateStr = gConfig.lastSync ? formatDate(gConfig.lastSync) : 'не выполнялась';
@@ -1835,19 +1880,14 @@ function doPost(e) {
       } else {
         updateGSyncStatusBadge('', 'Таблица не подключена');
       }
+    }
 
+    function saveManualGUrl() {
+      const urlInput = document.getElementById('inputGScriptUrl');
       if (urlInput) {
-        urlInput.addEventListener('change', (e) => {
-          gConfig.url = e.target.value.trim();
-          localStorage.setItem(STORAGE_KEY_G_URL, gConfig.url);
-          checkGConnection();
-        });
-      }
-      if (autoSyncCheck) {
-        autoSyncCheck.addEventListener('change', (e) => {
-          gConfig.autoSync = e.target.checked;
-          localStorage.setItem(STORAGE_KEY_G_AUTOSYNC, gConfig.autoSync ? 'true' : 'false');
-        });
+        gConfig.url = urlInput.value.trim();
+        localStorage.setItem(STORAGE_KEY_G_URL, gConfig.url);
+        checkGConnection(true);
       }
     }
 
@@ -1862,13 +1902,14 @@ function doPost(e) {
           if (text) text.textContent = 'Скопировать готовый код для Google Скрипта';
         }, 3000);
       }).catch(() => {
-        alert('Не удалось скопировать. Пожалуйста, скопируйте код вручную.');
+        alert('Не удалось скопировать автоматически. Скопируйте код вручную из инструкции.');
       });
     }
 
-    async function checkGConnection() {
+    async function checkGConnection(showDialog = false) {
       if (!gConfig.url) {
         updateGSyncStatusBadge('', 'Таблица не подключена');
+        if (showDialog) alert('Пожалуйста, вставьте URL веб-приложения Google Apps Script в поле выше!');
         return;
       }
       try {
@@ -1877,14 +1918,35 @@ function doPost(e) {
           method: 'GET',
           redirect: 'follow'
         });
-        const json = await res.json();
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch(pe) {
+          if (text.includes('Нет доступа') || text.includes('accounts.google.com') || res.status === 403) {
+            updateGSyncStatusBadge('error', 'Ошибка 403: Нет доступа! Выберите «Все» (Anyone) в развертывании Google');
+            if (showDialog) {
+              alert('⚠️ Ошибка 403 (Нет доступа)!\n\nВ Google Apps Script при развертывании в поле «У кого есть доступ» (Who has access) нужно обязательно выбрать «Все» (Anyone), а не «Только я»!\n\nСейчас Google блокирует запросы приложения.');
+            }
+            return;
+          }
+          throw new Error('Google вернул ответ не в формате JSON');
+        }
+
         if (json.status === 'ok') {
-          updateGSyncStatusBadge('connected', 'Связь с Google Таблицей установлена');
+          const count = json.transactions ? json.transactions.length : 0;
+          updateGSyncStatusBadge('connected', 'Связь отличная • Записей: ' + count);
+          if (showDialog) {
+            alert('✅ Связь успешно установлена!\nGoogle Таблица отвечает.\nВ таблице найдено записей: ' + count);
+          }
         } else {
           throw new Error(json.error || 'Ошибка ответа скрипта');
         }
       } catch (err) {
         updateGSyncStatusBadge('error', 'Ошибка связи: ' + err.message);
+        if (showDialog) {
+          alert('Ошибка связи с Google:\n' + err.message + '\n\nПроверьте, что в Google Apps Script выбрано: «У кого есть доступ: Все» (Anyone)!');
+        }
       }
     }
 
@@ -1905,24 +1967,38 @@ function doPost(e) {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
         });
-        const json = await res.json();
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch(pe) {
+          if (text.includes('Нет доступа') || res.status === 403) {
+            throw new Error('Ошибка 403: В Google Apps Script выберите «У кого есть доступ: Все»!');
+          }
+          throw new Error('Ошибка ответа сервера Google');
+        }
+
         if (json.status === 'ok') {
           gConfig.lastSync = Date.now();
           localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
           updateGSyncStatusBadge('connected', 'Выгружено: ' + formatDate(gConfig.lastSync));
-          if (!isSilent) alert('Успешно! Все расходы (' + state.transactions.length + ' записей) сохранены в Google Таблицу.');
+          if (!isSilent) {
+            alert('Успешно! Все расходы (' + state.transactions.length + ' записей) сохранены в Google Таблицу.');
+          }
         } else {
           throw new Error(json.error || 'Ошибка сервера Google');
         }
       } catch (err) {
         updateGSyncStatusBadge('error', 'Ошибка выгрузки: ' + err.message);
-        if (!isSilent) alert('Ошибка выгрузки в Google: ' + err.message);
+        if (!isSilent) {
+          alert('Ошибка выгрузки в Google:\n' + err.message);
+        }
       }
     }
 
-    async function syncPullFromGoogle() {
+    async function syncPullFromGoogle(isSilent = false) {
       if (!gConfig.url) {
-        alert('Сначала укажите URL веб-приложения Google Таблицы!');
+        if (!isSilent) alert('Сначала укажите URL веб-приложения Google Таблицы!');
         return;
       }
       try {
@@ -1931,33 +2007,80 @@ function doPost(e) {
           method: 'GET',
           redirect: 'follow'
         });
-        const json = await res.json();
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch(pe) {
+          if (text.includes('Нет доступа') || res.status === 403) {
+            throw new Error('Ошибка 403: В Google Apps Script выберите «У кого есть доступ: Все»!');
+          }
+          throw new Error('Ошибка парсинга ответа Google Таблицы');
+        }
+
         if (json.status === 'ok' && Array.isArray(json.transactions)) {
           state.transactions = json.transactions;
-          saveTransactions();
-          render();
+          saveTransactions(true); // Сохраняем локально, но не отправляем повторно назад
           gConfig.lastSync = Date.now();
           localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
-          updateGSyncStatusBadge('connected', 'Загружено: ' + formatDate(gConfig.lastSync));
-          alert('Синхронизация успешна! Загружено расходов: ' + state.transactions.length);
+          updateGSyncStatusBadge('connected', 'Синхронизировано: ' + formatDate(gConfig.lastSync));
+          if (!isSilent) {
+            alert('Синхронизация успешна! Загружено расходов: ' + state.transactions.length);
+          }
         } else {
           throw new Error(json.error || 'В таблице нет данных или скрипт вернул ошибку');
         }
       } catch (err) {
         updateGSyncStatusBadge('error', 'Ошибка загрузки: ' + err.message);
-        alert('Ошибка загрузки из Google: ' + err.message);
+        if (!isSilent) {
+          alert('Ошибка загрузки из Google:\n' + err.message);
+        }
       }
     }
 
+    let autoSyncDebounceTimer = null;
     function triggerGAutoSyncIfEnabled() {
       if (gConfig.autoSync && gConfig.url) {
-        syncPushToGoogle(true);
+        clearTimeout(autoSyncDebounceTimer);
+        autoSyncDebounceTimer = setTimeout(() => {
+          syncPushToGoogle(true);
+        }, 500);
       }
     }
 
-    function saveTransactions() {
+    function setupGoogleAutoSyncPolling() {
+      // Тихая подгрузка при старте страницы, если URL уже задан
+      if (gConfig.url) {
+        syncPullFromGoogle(true);
+      }
+
+      // Тихая подгрузка при возврате на вкладку (на ПК или телефоне)
+      window.addEventListener('focus', () => {
+        if (gConfig.autoSync && gConfig.url) {
+          syncPullFromGoogle(true);
+        }
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && gConfig.autoSync && gConfig.url) {
+          syncPullFromGoogle(true);
+        }
+      });
+
+      // Периодический опрос каждые 20 секунд (если вкладка активна и включено автосохранение)
+      setInterval(() => {
+        if (document.visibilityState === 'visible' && gConfig.autoSync && gConfig.url) {
+          syncPullFromGoogle(true);
+        }
+      }, 20000);
+    }
+
+    function saveTransactions(skipAutoSync = false) {
       localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(state.transactions));
       render();
+      if (!skipAutoSync) {
+        triggerGAutoSyncIfEnabled();
+      }
     }
 
     function saveCategories() {
@@ -2905,7 +3028,7 @@ function doPost(e) {
     document.getElementById('btnBackup').addEventListener('click', () => openModal('modalBackup'));
     const simBtn = document.getElementById('btnVoiceSim');
     if (simBtn) simBtn.addEventListener('click', openVoiceSimulator);
-    document.getElementById('btnGSheets').addEventListener('click', () => openModal('modalGSheets'));
+    document.getElementById('btnGSheets').addEventListener('click', () => { initGoogleSheetsUI(); openModal('modalGSheets'); });
     document.getElementById('btnHistory').addEventListener('click', () => openModal('modalHistory'));
 
     // Period buttons
