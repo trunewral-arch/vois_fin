@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest_g.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>Voice costs G v4.0.1 — Голосовой учёт расходов (Google Sheets Sync)</title>
+  <title>Voice costs G v4.0.2 — Голосовой учёт расходов (Google Sheets Sync)</title>
 
   <style>
     :root {
@@ -1196,7 +1196,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice costs G</h1>
-          <span class="app-version-badge">v4.0.1</span>
+          <span class="app-version-badge">v4.0.2</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -1996,16 +1996,20 @@ function doPost(e) {
       }
     }
 
+        let isSyncPulling = false;
     async function syncPullFromGoogle(isSilent = false) {
       if (!gConfig.url) {
         if (!isSilent) alert('Сначала укажите URL веб-приложения Google Таблицы!');
         return;
       }
+      if (isSyncPulling) return;
+      isSyncPulling = true;
       try {
-        updateGSyncStatusBadge('syncing', 'Загрузка из Google Таблицы...');
+        updateGSyncStatusBadge('syncing', 'Синхронизация с Google Таблицей...');
         const res = await fetch(gConfig.url, {
           method: 'GET',
-          redirect: 'follow'
+          redirect: 'follow',
+          cache: 'no-cache'
         });
         const text = await res.text();
         let json;
@@ -2019,13 +2023,17 @@ function doPost(e) {
         }
 
         if (json.status === 'ok' && Array.isArray(json.transactions)) {
-          state.transactions = json.transactions;
-          saveTransactions(true); // Сохраняем локально, но не отправляем повторно назад
+          const currentStr = JSON.stringify(state.transactions);
+          const incomingStr = JSON.stringify(json.transactions);
+          if (currentStr !== incomingStr) {
+            state.transactions = json.transactions;
+            saveTransactions(true); // Сохраняем локально, но не отправляем повторно назад
+          }
           gConfig.lastSync = Date.now();
           localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
           updateGSyncStatusBadge('connected', 'Синхронизировано: ' + formatDate(gConfig.lastSync));
           if (!isSilent) {
-            alert('Синхронизация успешна! Загружено расходов: ' + state.transactions.length);
+            alert('Синхронизация успешна! В таблице расходов: ' + state.transactions.length);
           }
         } else {
           throw new Error(json.error || 'В таблице нет данных или скрипт вернул ошибку');
@@ -2035,6 +2043,8 @@ function doPost(e) {
         if (!isSilent) {
           alert('Ошибка загрузки из Google:\n' + err.message);
         }
+      } finally {
+        isSyncPulling = false;
       }
     }
 
@@ -2049,30 +2059,30 @@ function doPost(e) {
     }
 
     function setupGoogleAutoSyncPolling() {
-      // Тихая подгрузка при старте страницы, если URL уже задан
+      // 1. Быстрая загрузка при открытии или обновлении страницы
       if (gConfig.url) {
         syncPullFromGoogle(true);
       }
 
-      // Тихая подгрузка при возврате на вкладку (на ПК или телефоне)
+      // 2. Мгновенная подгрузка при возврате на вкладку (с телефона или другого окна)
       window.addEventListener('focus', () => {
-        if (gConfig.autoSync && gConfig.url) {
+        if (gConfig.url) {
           syncPullFromGoogle(true);
         }
       });
 
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && gConfig.autoSync && gConfig.url) {
+        if (document.visibilityState === 'visible' && gConfig.url) {
           syncPullFromGoogle(true);
         }
       });
 
-      // Периодический опрос каждые 20 секунд (если вкладка активна и включено автосохранение)
+      // 3. Быстрый фоновый опрос каждые 6 секунд для живой синхронизации
       setInterval(() => {
-        if (document.visibilityState === 'visible' && gConfig.autoSync && gConfig.url) {
+        if (document.visibilityState === 'visible' && gConfig.url) {
           syncPullFromGoogle(true);
         }
-      }, 20000);
+      }, 6000);
     }
 
     function saveTransactions(skipAutoSync = false) {
@@ -3045,6 +3055,8 @@ function doPost(e) {
     loadData();
     initTheme();
     render();
+    initGoogleSheetsUI();
+    setupGoogleAutoSyncPolling();
 
     // PWA Install Prompt & Service Worker Registration
     let deferredInstallPrompt = null;
