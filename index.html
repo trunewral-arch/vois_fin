@@ -803,7 +803,37 @@
       color: var(--text-primary);
       letter-spacing: -0.3px;
       flex-shrink: 0;
+    }
+
+    .item-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
       margin-left: 8px;
+    }
+
+    .btn-item-delete {
+      background: rgba(255, 59, 48, 0.08);
+      border: 1px solid rgba(255, 59, 48, 0.20);
+      outline: none;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .btn-item-delete:active {
+      background: rgba(255, 59, 48, 0.25);
+      transform: scale(0.90);
     }
 
     .empty-state {
@@ -1072,14 +1102,13 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice Expense</h1>
-          <span class="app-version-badge">v1.2.4</span>
+          <span class="app-version-badge">v1.2.5</span>
         </div>
         <div class="top-actions">
           <button id="btnInstallPwa" class="icon-btn" style="display:none;" title="Установить приложение">📲</button>
           <button id="btnHistory" class="icon-btn" title="История расходов">
             📋<span id="historyHeaderBadge" class="history-badge">0</span>
           </button>
-          <button id="btnVoiceSim" class="icon-btn" title="Тест парсера речи">✨</button>
           <button id="btnThemeToggle" class="icon-btn" title="Тема">🌓</button>
           <button id="btnSettings" class="icon-btn" title="Настройки">⚙️</button>
           <button id="btnBackup" class="icon-btn" title="Экспорт">📤</button>
@@ -1858,15 +1887,21 @@
       const d = new Date(ts);
       const today = new Date();
       const isToday = d.toDateString() === today.toDateString();
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
       const hours = String(d.getHours()).padStart(2, '0');
       const mins = String(d.getMinutes()).padStart(2, '0');
 
       if (isToday) {
-        return `Сегодня, ${hours}:${mins}`;
+        return `Сегодня, ${day}.${month} в ${hours}:${mins}`;
       }
-      const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-      const dayName = days[d.getDay()];
-      return `${dayName}, ${d.getDate()}.${d.getMonth() + 1} ${hours}:${mins}`;
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const isYesterday = d.toDateString() === yesterday.toDateString();
+      if (isYesterday) {
+        return `Вчера, ${day}.${month} в ${hours}:${mins}`;
+      }
+      return `${day}.${month}.${d.getFullYear()} в ${hours}:${mins}`;
     }
 
     function render() {
@@ -2007,8 +2042,25 @@
                 </span>
               </div>
             </div>
-            <span class="item-amount">-${formatCurrency(Number(tx.amount))} ₽</span>
+            <div class="item-right">
+              <span class="item-amount">-${formatCurrency(Number(tx.amount))} ₽</span>
+              <button type="button" class="btn-item-delete" title="Удалить запись" aria-label="Удалить">🗑️</button>
+            </div>
           `;
+
+          const delBtn = item.querySelector('.btn-item-delete');
+          if (delBtn) {
+            delBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (confirm(`Удалить «${tx.description || cat.name}» (${formatCurrency(Number(tx.amount))} ₽)?`)) {
+                state.transactions = state.transactions.filter(t => t.id !== tx.id);
+                saveTransactions();
+                render();
+              }
+            });
+          }
+
           item.addEventListener('click', () => {
             closeModal('modalHistory');
             openAddEditModal(tx.id);
@@ -2357,7 +2409,8 @@
     document.getElementById('btnThemeToggle').addEventListener('click', toggleTheme);
     document.getElementById('btnSettings').addEventListener('click', openCategorySettings);
     document.getElementById('btnBackup').addEventListener('click', () => openModal('modalBackup'));
-    document.getElementById('btnVoiceSim').addEventListener('click', openVoiceSimulator);
+    const simBtn = document.getElementById('btnVoiceSim');
+    if (simBtn) simBtn.addEventListener('click', openVoiceSimulator);
     document.getElementById('btnHistory').addEventListener('click', () => openModal('modalHistory'));
 
     // Period buttons
