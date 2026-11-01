@@ -6,7 +6,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Voice Expense">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#F2F2F7" id="meta-theme-color">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <title>Voice Expense — Голосовой учёт расходов</title>
 
   <style>
@@ -1068,9 +1072,10 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice Expense</h1>
-          <span class="app-version-badge">v1.2.1</span>
+          <span class="app-version-badge">v1.2.2</span>
         </div>
         <div class="top-actions">
+          <button id="btnInstallPwa" class="icon-btn" style="display:none;" title="Установить приложение">📲</button>
           <button id="btnHistory" class="icon-btn" title="История расходов">
             📋<span id="historyHeaderBadge" class="history-badge">0</span>
           </button>
@@ -2326,6 +2331,39 @@
     loadData();
     initTheme();
     render();
+
+    // PWA Install Prompt & Service Worker Registration
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const installBtn = document.getElementById('btnInstallPwa');
+      if (installBtn) {
+        installBtn.style.display = 'inline-flex';
+      }
+    });
+
+    const installBtn = document.getElementById('btnInstallPwa');
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          if (outcome === 'accepted') {
+            installBtn.style.display = 'none';
+          }
+          deferredInstallPrompt = null;
+        } else {
+          alert('Чтобы установить приложение: нажмите меню браузера (три точки ⋮) и выберите «Установить приложение» или «Добавить на главный экран».');
+        }
+      });
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>
