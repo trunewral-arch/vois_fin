@@ -1072,7 +1072,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice Expense</h1>
-          <span class="app-version-badge">v1.2.3</span>
+          <span class="app-version-badge">v1.2.4</span>
         </div>
         <div class="top-actions">
           <button id="btnInstallPwa" class="icon-btn" style="display:none;" title="Установить приложение">📲</button>
@@ -1735,15 +1735,17 @@
         } catch (e) {
           console.log('Error starting rec:', e);
         }
-      }, 250);
+      }, 300);
     }
 
     function endPressCategory(catId, cardEl) {
       clearTimeout(pressTimer);
       cardEl.classList.remove('holding', 'recording');
 
-      if (!isLongPress || (Date.now() - pressStartTime < 280)) {
+      const elapsed = Date.now() - pressStartTime;
+      if (!isLongPress || elapsed < 300) {
         // Short tap -> Open Quick Manual Entry Modal
+        isPressing = false;
         if (currentRec) {
           try { currentRec.abort(); } catch (e) {}
           currentRec = null;
@@ -1933,6 +1935,10 @@
         });
 
         card.addEventListener('contextmenu', (e) => e.preventDefault());
+        card.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
 
         grid.appendChild(card);
       });
@@ -2020,16 +2026,23 @@
     /* ==========================================================================
        7. MODALS LOGIC
        ========================================================================== */
+    let modalOpenedTimestamp = 0;
+
     function openModal(id) {
-      document.getElementById(id).classList.add('open');
+      modalOpenedTimestamp = Date.now();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
     }
 
     function closeModal(id) {
-      document.getElementById(id).classList.remove('open');
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
     }
 
     document.querySelectorAll('.modal-overlay').forEach(modal => {
       modal.addEventListener('click', (e) => {
+        // Guard against mobile synthetic ghost clicks immediately after tap
+        if (Date.now() - modalOpenedTimestamp < 350) return;
         if (e.target === modal) {
           modal.classList.remove('open');
         }
