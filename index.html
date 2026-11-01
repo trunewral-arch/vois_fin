@@ -1629,21 +1629,25 @@
           return;
         }
 
-        // Create a dedicated fresh recognition instance for this push session
+        // Dedicated recognition instance for this push session
         const rec = new SpeechRecognition();
         rec.lang = 'ru-RU';
-        rec.continuous = false;
-        rec.interimResults = false;
+        rec.continuous = true;       // Stay open while holding, do NOT cut off on pause
+        rec.interimResults = false;  // Only take clean transcripts, no flickering
         rec.maxAlternatives = 1;
 
         rec.onstart = () => {
-          showRecordingOverlay(true, 'Слушаю... говорите сумму и описание');
+          showRecordingOverlay(true, 'Идёт запись... Говорите фразу');
         };
 
         rec.onresult = (event) => {
-          if (event.results && event.results[0] && event.results[0][0]) {
-            recordedTranscript = event.results[0][0].transcript;
+          let fullText = '';
+          for (let i = 0; i < event.results.length; i++) {
+            if (event.results[i] && event.results[i][0]) {
+              fullText += event.results[i][0].transcript + ' ';
+            }
           }
+          recordedTranscript = fullText.trim();
         };
 
         rec.onerror = (event) => {
@@ -1849,18 +1853,19 @@
 
         card.addEventListener('pointerdown', (e) => {
           e.preventDefault();
+          try { card.setPointerCapture(e.pointerId); } catch (err) {}
           startPressCategory(cat.id, card);
         });
 
         card.addEventListener('pointerup', (e) => {
           e.preventDefault();
+          try { if (card.hasPointerCapture && card.hasPointerCapture(e.pointerId)) card.releasePointerCapture(e.pointerId); } catch (err) {}
           endPressCategory(cat.id, card);
         });
 
-        card.addEventListener('pointercancel', () => {
-          clearTimeout(pressTimer);
-          isHoldingRecording = false;
-          card.classList.remove('holding', 'recording');
+        card.addEventListener('pointercancel', (e) => {
+          try { if (card.hasPointerCapture && card.hasPointerCapture(e.pointerId)) card.releasePointerCapture(e.pointerId); } catch (err) {}
+          endPressCategory(cat.id, card);
         });
 
         card.addEventListener('contextmenu', (e) => e.preventDefault());
