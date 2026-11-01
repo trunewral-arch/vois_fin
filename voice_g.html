@@ -1,0 +1,2960 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Voice costs G">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#F2F2F7" id="meta-theme-color">
+  <link rel="manifest" href="manifest_g.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Voice costs G v4.0 — Голосовой учёт расходов (Google Sheets Sync)</title>
+
+  <style>
+    :root {
+      --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --bg-primary: #F2F2F7;
+      --bg-card: rgba(255, 255, 255, 0.90);
+      --bg-card-hover: rgba(255, 255, 255, 0.98);
+      --bg-modal: #FFFFFF;
+      --bg-input: #E5E5EA;
+      --text-primary: #000000;
+      --text-secondary: #8E8E93;
+      --text-tertiary: #AEAEB2;
+      --border-subtle: rgba(60, 60, 67, 0.12);
+      --card-shadow: 0 3px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+      --island-bg: #1C1C1E;
+      --island-text: #FFFFFF;
+      --active-pill: #FFFFFF;
+      --active-pill-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+      --pill-container-bg: rgba(118, 118, 128, 0.12);
+      --danger: #FF3B30;
+      --success: #34C759;
+      --accent: #007AFF;
+      --radius-squircle: 20px;
+      --radius-sm: 12px;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #000000;
+      --bg-card: rgba(28, 28, 30, 0.85);
+      --bg-card-hover: rgba(44, 44, 46, 0.95);
+      --bg-modal: #1C1C1E;
+      --bg-input: #2C2C2E;
+      --text-primary: #FFFFFF;
+      --text-secondary: #8E8E93;
+      --text-tertiary: #636366;
+      --border-subtle: rgba(255, 255, 255, 0.12);
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      --island-bg: #2C2C2E;
+      --island-text: #FFFFFF;
+      --active-pill: #636366;
+      --active-pill-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --pill-container-bg: rgba(118, 118, 128, 0.24);
+      --danger: #FF453A;
+      --success: #32D74B;
+      --accent: #0A84FF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Fixed Single Screen: Absolutely No Scrolling or Page Swipe */
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      position: fixed;
+      touch-action: none;
+      font-family: var(--font-family);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* 1-Screen App Container */
+    .app-container {
+      width: 100%;
+      max-width: 440px;
+      height: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: calc(env(safe-area-inset-top, 8px) + 6px) 12px calc(env(safe-area-inset-bottom, 8px) + 8px) 12px;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Compact Header Section */
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 2px;
+    }
+
+    .app-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-logo {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .app-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .app-version-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: var(--pill-container-bg);
+      padding: 2px 6px;
+      border-radius: 6px;
+      letter-spacing: 0.2px;
+      line-height: 1.2;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--card-shadow);
+      transition: transform 0.15s ease, background 0.2s ease;
+      position: relative;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.92);
+    }
+
+    .history-badge {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 17px;
+      height: 17px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      border: 2px solid var(--bg-primary);
+    }
+
+    /* Balance Section (Compact) */
+    .balance-card {
+      text-align: center;
+      padding: 2px 0;
+    }
+
+    .balance-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+
+    .balance-amount {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 3px;
+      line-height: 1.1;
+    }
+
+    .currency-symbol {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    /* Period Filter Pills (Apple Segmented Control) */
+    .period-segmented {
+      display: flex;
+      background: var(--pill-container-bg);
+      border-radius: 11px;
+      padding: 2px;
+      position: relative;
+    }
+
+    .period-btn {
+      flex: 1;
+      padding: 6px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .period-btn.active {
+      color: var(--text-primary);
+      background: var(--active-pill);
+      box-shadow: var(--active-pill-shadow);
+    }
+
+    /* Segmented Proportion Bar (iOS Battery / Storage style) */
+    .stats-section {
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .segmented-bar {
+      height: 8px;
+      border-radius: 5px;
+      overflow: hidden;
+      display: flex;
+      background: rgba(120, 120, 128, 0.16);
+      width: 100%;
+    }
+
+    .bar-segment {
+      height: 100%;
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .stats-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .legend-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .ptt-hint {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* 8 Categories Grid: Takes 100% of Remaining Height */
+    .categories-grid-container {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 8px;
+      flex: 1;
+      min-height: 0;
+      height: 100%;
+    }
+
+    .category-card {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-squircle);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      cursor: pointer;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--card-shadow);
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, border-color 0.15s ease;
+      touch-action: none;
+      overflow: hidden;
+    }
+
+    .category-card:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .category-card:active,
+    .category-card.holding {
+      transform: scale(0.95);
+    }
+
+    .category-card.recording {
+      border-color: var(--card-color, var(--accent));
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25), var(--card-shadow);
+      animation: pulse-ring 1.4s infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 2px var(--card-color), var(--card-shadow); }
+      50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.0), 0 0 16px var(--card-color); }
+      100% { box-shadow: 0 0 0 2px var(--card-color), var(--card-shadow); }
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .category-icon-wrapper {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      background: rgba(120, 120, 128, 0.12);
+      transition: transform 0.2s ease;
+    }
+
+    .category-card.recording .category-icon-wrapper {
+      transform: scale(1.15);
+    }
+
+    .mic-badge {
+      opacity: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--card-color, var(--accent));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .category-card.recording .mic-badge {
+      opacity: 1;
+      transform: scale(1.1);
+      animation: mic-blink 0.8s ease infinite alternate;
+    }
+
+    @keyframes mic-blink {
+      from { transform: scale(1); }
+      to { transform: scale(1.25); }
+    }
+
+    .card-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .category-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+
+    .category-amount {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+
+    .card-color-stripe {
+      position: absolute;
+      bottom: 0;
+      left: 10px;
+      right: 10px;
+      height: 3px;
+      border-radius: 2px 2px 0 0;
+      background: var(--card-color, #999);
+      opacity: 0.85;
+    }
+
+    /* Confirmation Banner (Dynamic Island: Waits for OK or Cancel) */
+    .dynamic-island {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 12px) + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(-150px) scale(0.9);
+      width: calc(100% - 24px);
+      max-width: 420px;
+      background: var(--island-bg);
+      color: var(--island-text);
+      border-radius: 26px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      transition: transform 0.35s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.25s ease;
+      opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .dynamic-island.visible {
+      transform: translateX(-50%) translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .island-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .island-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .island-icon {
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+
+    .island-details {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .island-category {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-tertiary);
+    }
+
+    .island-desc {
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .island-raw {
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .island-amount {
+      font-size: 20px;
+      font-weight: 800;
+      color: #34C759;
+      flex-shrink: 0;
+    }
+
+    .island-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .island-btn {
+      flex: 1;
+      padding: 9px 0;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+    }
+
+    .island-btn:active {
+      transform: scale(0.96);
+      opacity: 0.8;
+    }
+
+    .island-btn-cancel {
+      background: rgba(255, 59, 48, 0.22);
+      color: #FF453A;
+    }
+
+    .island-btn-edit {
+      background: rgba(255, 255, 255, 0.16);
+      color: #FFFFFF;
+      flex: 0 0 42px;
+      font-size: 16px;
+    }
+
+    .island-btn-ok {
+      background: #34C759;
+      color: #FFFFFF;
+      flex: 1.4;
+    }
+
+    /* Live Recording Overlay (Pulses while speaking) */
+    
+    .version-switch-link {
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: var(--pill-container-bg);
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      margin-right: 4px;
+    }
+    .version-switch-link:active {
+      opacity: 0.7;
+      transform: scale(0.96);
+    }
+
+    
+    .g-sync-dot {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #8E8E93;
+      border: 1px solid var(--bg-card);
+    }
+    .g-sync-dot.connected {
+      background: #34C759;
+      box-shadow: 0 0 5px rgba(52, 199, 89, 0.6);
+    }
+    .g-sync-dot.syncing {
+      background: #007AFF;
+      animation: pulse-gdot 0.8s infinite alternate;
+    }
+    .g-sync-dot.error {
+      background: #FF3B30;
+    }
+    @keyframes pulse-gdot {
+      from { transform: scale(0.8); opacity: 0.6; }
+      to { transform: scale(1.3); opacity: 1; }
+    }
+    .g-status-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: var(--bg-input);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .gsheets-instructions-box {
+      background: rgba(52, 199, 89, 0.08);
+      border: 1px solid rgba(52, 199, 89, 0.22);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      margin-top: 14px;
+    }
+    .gsheets-instructions-box ol {
+      margin-left: 18px;
+      margin-top: 6px;
+    }
+    .gsheets-instructions-box li {
+      margin-bottom: 5px;
+    }
+    .btn-copy-script {
+      background: rgba(0, 122, 255, 0.12);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      width: 100%;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .btn-copy-script:active {
+      transform: scale(0.97);
+    }
+
+    .recording-overlay {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      width: calc(100% - 32px);
+      max-width: 400px;
+      background: rgba(0, 0, 0, 0.90);
+      color: #FFFFFF;
+      padding: 12px 18px;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 998;
+      transition: transform 0.25s cubic-bezier(0.17, 0.89, 0.32, 1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      pointer-events: none;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .recording-overlay.active {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .wave-bars {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .wave-bar {
+      width: 3px;
+      background: #FF3B30;
+      border-radius: 2px;
+      animation: wave-anim 0.6s ease-in-out infinite alternate;
+    }
+
+    .wave-bar:nth-child(1) { height: 8px; animation-delay: 0.1s; }
+    .wave-bar:nth-child(2) { height: 16px; animation-delay: 0.25s; }
+    .wave-bar:nth-child(3) { height: 22px; animation-delay: 0.15s; }
+    .wave-bar:nth-child(4) { height: 14px; animation-delay: 0.3s; }
+    .wave-bar:nth-child(5) { height: 8px; animation-delay: 0.05s; }
+
+    @keyframes wave-anim {
+      0% { transform: scaleY(0.4); }
+      100% { transform: scaleY(1.3); }
+    }
+
+    .recording-live-text {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Modal Sheet Styling (iOS Bottom Sheet) */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-modal);
+      border-radius: 24px 24px 0 0;
+      padding: 14px 18px calc(env(safe-area-inset-bottom, 16px) + 16px) 18px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.17, 0.89, 0.32, 1);
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-overlay.open .modal-sheet {
+      transform: translateY(0);
+    }
+
+    .modal-drag-handle {
+      width: 36px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--text-tertiary);
+      margin: 0 auto 12px auto;
+      flex-shrink: 0;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .modal-close-btn {
+      background: var(--bg-input);
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 15px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .modal-content-scrollable {
+      overflow-y: auto;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+      padding-right: 2px;
+    }
+
+    /* History Feed (Inside History Modal) */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 8px;
+    }
+
+    .history-item {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .history-item:active {
+      transform: scale(0.98);
+    }
+
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .item-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(120, 120, 128, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      flex-shrink: 0;
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .item-desc {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 6px;
+    }
+
+    .item-amount {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+      flex-shrink: 0;
+    }
+
+    .item-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+
+    .btn-item-delete {
+      background: rgba(255, 59, 48, 0.08);
+      border: 1px solid rgba(255, 59, 48, 0.20);
+      outline: none;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .btn-item-delete:active {
+      background: rgba(255, 59, 48, 0.25);
+      transform: scale(0.90);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 36px 16px;
+      color: var(--text-secondary);
+      background: var(--bg-input);
+      border-radius: var(--radius-sm);
+      border: 1px dashed var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .empty-icon {
+      font-size: 36px;
+      margin-bottom: 4px;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      font-weight: 500;
+      max-width: 260px;
+      line-height: 1.4;
+    }
+
+    /* Forms */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .form-input {
+      background: var(--bg-input);
+      border: 1px solid transparent;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      width: 100%;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent);
+    }
+
+    .amount-input-lg {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-align: center;
+    }
+
+    .category-pills-selector {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .cat-pill {
+      background: var(--bg-input);
+      border: 2px solid transparent;
+      border-radius: 11px;
+      padding: 6px 3px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .cat-pill.selected {
+      border-color: var(--accent);
+      background: rgba(0, 122, 255, 0.12);
+    }
+
+    .cat-pill-icon {
+      font-size: 17px;
+    }
+
+    .cat-pill-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-shrink: 0;
+    }
+
+    .btn-primary {
+      flex: 1;
+      background: var(--accent);
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 12px 0;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 14px;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-danger {
+      background: rgba(255, 59, 48, 0.15);
+      color: var(--danger);
+      font-weight: 600;
+      font-size: 14px;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    /* Category Settings List */
+    .cat-settings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .cat-setting-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      padding: 7px 10px;
+      border-radius: 10px;
+    }
+
+    .cat-setting-emoji {
+      width: 32px;
+      height: 32px;
+      font-size: 18px;
+      text-align: center;
+      border: none;
+      background: transparent;
+    }
+
+    .cat-setting-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .cat-setting-color {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: none;
+    }
+
+    /* Simulation chips */
+    .sim-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .sim-chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 6px 9px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .sim-chip:active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Island Confirmation Banner (Waits for OK or Cancel) -->
+  <div id="dynamicIsland" class="dynamic-island">
+    <div class="island-main">
+      <div class="island-left">
+        <span id="islandIcon" class="island-icon">🛒</span>
+        <div class="island-details">
+          <span id="islandCategory" class="island-category">Продукты</span>
+          <span id="islandDesc" class="island-desc">Хлеб и молоко</span>
+          <span id="islandRaw" class="island-raw">Сказано: «430 хлеб»</span>
+        </div>
+      </div>
+      <span id="islandAmount" class="island-amount">+430 ₽</span>
+    </div>
+    <div class="island-actions">
+      <button id="islandBtnCancel" class="island-btn island-btn-cancel">✕ Отмена</button>
+      <button id="islandBtnEdit" class="island-btn island-btn-edit" title="Править">✏️</button>
+      <button id="islandBtnOk" class="island-btn island-btn-ok">✓ ОК</button>
+    </div>
+  </div>
+
+  <!-- Voice Recording Overlay (Live Feedback) -->
+  <div id="recordingOverlay" class="recording-overlay">
+    <div class="wave-bars">
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+    </div>
+    <span id="recordingText" class="recording-live-text">Слушаю... (говорите сумму и описание)</span>
+  </div>
+
+  <!-- FIXED 1-SCREEN APP CONTAINER (NO SCROLLING) -->
+  <div class="app-container">
+
+    <!-- Header Section -->
+    <header class="header">
+      <div class="top-bar">
+        <div class="app-title-group">
+          <span class="app-logo">🎙️</span>
+          <h1 class="app-title">Voice costs G</h1>
+          <span class="app-version-badge">v4.0.0</span>
+        </div>
+        <div class="top-actions">
+          <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
+          <a href="voice_pt.html" class="version-switch-link" title="Перейти на v2.0 PT">v2.0</a>
+          <button id="btnInstallPwa" class="icon-btn" style="display:none;" title="Установить приложение">📲</button>
+          <button id="btnGSheets" class="icon-btn" style="position:relative;" title="Синхронизация с Google Таблицей">📊<span id="gSyncDot" class="g-sync-dot"></span></button>
+          <button id="btnHistory" class="icon-btn" title="История расходов">
+            📋<span id="historyHeaderBadge" class="history-badge">0</span>
+          </button>
+          <button id="btnThemeToggle" class="icon-btn" title="Тема">🌓</button>
+          <button id="btnSettings" class="icon-btn" title="Настройки">⚙️</button>
+          <button id="btnBackup" class="icon-btn" title="Экспорт">📤</button>
+        </div>
+      </div>
+
+      <!-- Balance Card -->
+      <div class="balance-card">
+        <div id="balanceLabel" class="balance-label">Расходы за сегодня</div>
+        <div class="balance-amount">
+          <span id="totalBalanceAmount">0</span>
+          <span class="currency-symbol">₽</span>
+        </div>
+      </div>
+
+      <!-- Period Filter Segmented Control -->
+      <div class="period-segmented">
+        <button class="period-btn active" data-period="today">Сегодня</button>
+        <button class="period-btn" data-period="week">Неделя</button>
+        <button class="period-btn" data-period="month">Месяц</button>
+        <button class="period-btn" data-period="all">Всё время</button>
+      </div>
+
+      <!-- Segmented Proportion Bar (Apple Battery / Storage style) -->
+      <section class="stats-section">
+        <div id="segmentedBar" class="segmented-bar">
+          <!-- Segments inserted dynamically -->
+        </div>
+        <div id="statsLegend" class="stats-legend">
+          <!-- Legend dots inserted dynamically -->
+        </div>
+      </section>
+
+      <div class="ptt-hint">
+        <span>⚡ <b>Удерживайте</b> и говорите</span> • <span><b>Тап</b> — ввод</span>
+      </div>
+    </header>
+
+    <!-- 8 Categories Push-to-Talk Grid (Adapts to fill 100% of remaining screen) -->
+    <div class="categories-grid-container">
+      <div id="categoriesGrid" class="categories-grid">
+        <!-- 8 category cards generated via JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: History of Expenses (Dedicated Button) -->
+  <div id="modalHistory" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">История расходов</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalHistory')">✕</button>
+      </div>
+      <div class="modal-content-scrollable">
+        <div id="historyListModal" class="history-list">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" onclick="openAddEditModal()">+ Добавить вручную</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Quick Add / Edit Transaction -->
+  <div id="modalEdit" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 id="modalEditTitle" class="modal-title">Добавить расход</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalEdit')">✕</button>
+      </div>
+
+      <div class="modal-content-scrollable">
+        <form id="formExpense" onsubmit="event.preventDefault(); saveExpenseFromModal();">
+          <input type="hidden" id="editExpenseId">
+
+          <div class="form-group">
+            <label class="form-label">Сумма (₽)</label>
+            <input type="number" step="any" id="inputAmount" class="form-input amount-input-lg" placeholder="0" required inputmode="decimal" autofocus>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Описание</label>
+            <input type="text" id="inputDesc" class="form-input" placeholder="Например: Капучино, Хлеб, Такси" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Категория</label>
+            <div id="modalCategoryPills" class="category-pills-selector">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Дата и время</label>
+            <input type="datetime-local" id="inputDateTime" class="form-input">
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="btnDeleteExpense" class="btn-danger hidden" onclick="deleteCurrentEditingExpense()">Удалить</button>
+            <button type="submit" class="btn-primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Voice Simulator / Test Phrases -->
+  <div id="modalSim" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Тест голосового парсера</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalSim')">✕</button>
+      </div>
+
+      <div class="modal-content-scrollable">
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">
+          Тестируйте распознавание без микрофона. При нажатии появится карточка с кнопками <b>ОК</b> и <b>Отмена</b>:
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Категория</label>
+          <div id="simCategoryPills" class="category-pills-selector" style="margin-bottom: 6px;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Фраза для разбора</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="inputSimPhrase" class="form-input" placeholder="Например: 430 хлеб" value="430 хлеб">
+            <button type="button" class="btn-primary" style="flex: 0 0 84px;" onclick="executeSimPhrase()">Пуск</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Готовые примеры:</label>
+          <div class="sim-chips">
+            <div class="sim-chip" onclick="applySimChip('430 хлеб', 'cat_groceries')">🛒 430 хлеб</div>
+            <div class="sim-chip" onclick="applySimChip('капучино и круассан 320', 'cat_cafe')">☕ капучино и круассан 320</div>
+            <div class="sim-chip" onclick="applySimChip('такси до дома 650', 'cat_transport')">🚕 такси до дома 650</div>
+            <div class="sim-chip" onclick="applySimChip('такси за полторы тысячи рублей', 'cat_transport')">🚕 полторы тысячи такси</div>
+            <div class="sim-chip" onclick="applySimChip('двести аптека', 'cat_health')">💊 двести аптека</div>
+            <div class="sim-chip" onclick="applySimChip('косарь на бензин', 'cat_transport')">🚕 косарь на бензин</div>
+            <div class="sim-chip" onclick="applySimChip('сотка на чай', 'cat_cafe')">☕ сотка на чай</div>
+            <div class="sim-chip" onclick="applySimChip('кино и попкорн 850', 'cat_leisure')">🍿 кино и попкорн 850</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Microphone Help / Secure Context Notice -->
+  <div id="modalMicHelp" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">🎙️ Доступ к микрофону</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalMicHelp')">✕</button>
+      </div>
+
+      <div class="modal-content-scrollable" style="font-size: 13px; line-height: 1.5; color: var(--text-primary); display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: rgba(255, 149, 0, 0.12); border-left: 4px solid #FF9500; padding: 10px 12px; border-radius: 8px;">
+          <b>Почему микрофон заблокирован?</b><br>
+          Мобильные браузеры (Chrome, Яндекс) блокируют микрофон при открытии файла из Проводника (схема <code>content://</code> или <code>file://</code>). Для работы микрофона требуется <b>HTTPS</b>.
+        </div>
+
+        <div>
+          <b>Как включить голосовой ввод:</b>
+          <ol style="margin-left: 20px; margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
+            <li>Включите <b>GitHub Pages</b> в репозитории проекта (Settings → Pages → branch: main → Save).</li>
+            <li>Откройте полученную ссылку <code>https://...</code> на смартфоне.</li>
+            <li>Нажмите <b>«Разрешить»</b> при запросе доступа к микрофону.</li>
+          </ol>
+        </div>
+
+        <div style="background: var(--bg-input); padding: 8px 12px; border-radius: 10px;">
+          💡 <b>Прямо сейчас:</b> используйте короткий тап по карточке для ручного ввода суммы или кнопку <b>✨</b> для проверки парсера.
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" onclick="closeModal('modalMicHelp')">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- MODAL: Google Sheets Sync -->
+  <div id="modalGSheets" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">📊 Google Таблицы (Синхронизация)</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalGSheets')">✕</button>
+      </div>
+
+      <div class="modal-content-scrollable">
+        <div id="gStatusBanner" class="g-status-banner">
+          <span id="gStatusIcon">⚪</span>
+          <span id="gStatusText">Таблица не подключена</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">URL веб-приложения Google Apps Script</label>
+          <input type="url" id="inputGScriptUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+        </div>
+
+        <div class="form-group" style="margin-top: 12px; display:flex; align-items:center; justify-content:space-between;">
+          <label class="form-label" style="margin-bottom:0; cursor:pointer;" for="checkboxGAutoSync">Автосохранение при каждой трате</label>
+          <input type="checkbox" id="checkboxGAutoSync" style="width:20px; height:20px; accent-color:var(--accent); cursor:pointer;">
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button type="button" class="btn-primary" onclick="syncPushToGoogle()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <span>☁️</span> В Таблицу
+          </button>
+          <button type="button" class="btn-secondary" onclick="syncPullFromGoogle()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <span>⬇️</span> Из Таблицы
+          </button>
+        </div>
+
+        <button type="button" class="btn-copy-script" onclick="copyGAppsScriptCode()">
+          <span id="copyScriptIcon">📋</span> <span id="copyScriptText">Скопировать готовый код для Google Скрипта</span>
+        </button>
+
+        <div class="gsheets-instructions-box">
+          <strong>📖 Настройка за 2 минуты (без VPN и платных баз):</strong>
+          <ol>
+            <li>Откройте <a href="https://sheets.google.com" target="_blank" style="color:var(--accent);">Google Таблицы</a> и создайте новую пустую таблицу (назовите её, например, <em>«Мои расходы»</em>).</li>
+            <li>В меню таблицы нажмите <strong>Расширения → Apps Script</strong>.</li>
+            <li>Нажмите синюю кнопку выше <strong>«Скопировать готовый код...»</strong>, сотрите весь текст в окне редактора Google и вставьте скопированный код.</li>
+            <li>Нажмите синюю кнопку вверху <strong>Развернуть → Новое развертывание</strong>:
+              <ul>
+                <li>Тип: выберите шестерёнку ⚙️ → <strong>Веб-приложение</strong></li>
+                <li>Кто имеет доступ: выберите <strong>«Все» (Anyone)</strong></li>
+              </ul>
+            </li>
+            <li>Нажмите «Развернуть» и скопируйте выданный <strong>URL веб-приложения</strong> в поле выше.</li>
+          </ol>
+          <div style="margin-top: 6px; font-size: 11px; opacity: 0.9;">
+            💡 Чтобы открыть расходы на компьютере, просто вставьте эту же ссылку в приложении на ПК и нажмите «⬇️ Из Таблицы».
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Category Settings -->
+  <div id="modalSettings" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Настройки категорий</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalSettings')">✕</button>
+      </div>
+
+      <div class="modal-content-scrollable">
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+          Вы можете переименовать любую из 8 категорий, сменить эмодзи или цвет:
+        </p>
+
+        <div id="catSettingsList" class="cat-settings-list"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="resetCategoriesToDefault()">Сброс</button>
+        <button type="button" class="btn-primary" onclick="saveCategoriesSettings()">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Backup & Export -->
+  <div id="modalBackup" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Экспорт и резервная копия</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalBackup')">✕</button>
+      </div>
+
+      <div class="modal-content-scrollable">
+        <div class="form-group" style="gap: 8px;">
+          <button type="button" class="btn-primary" onclick="exportToCSV()" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span>📊</span> Скачать CSV (Excel / Numbers)
+          </button>
+          <button type="button" class="btn-secondary" onclick="exportToJSON()" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span>💾</span> Резервная копия (JSON)
+          </button>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-subtle); margin: 14px 0;">
+
+        <div class="form-group">
+          <label class="form-label">Восстановление из резервной копии</label>
+          <input type="file" id="fileImportBackup" accept=".json" onchange="importFromJSON(event)" style="display: none;">
+          <button type="button" class="btn-secondary" onclick="document.getElementById('fileImportBackup').click()" style="width: 100%;">
+            📥 Загрузить файл JSON...
+          </button>
+        </div>
+
+        <div class="form-group" style="margin-top: 14px;">
+          <button type="button" class="btn-danger" onclick="clearAllData()" style="width: 100%;">
+            🗑️ Очистить все расходы
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. DATA STRUCTURE & INITIAL STATE
+       ========================================================================== */
+    const STORAGE_KEY_TRANSACTIONS = 'voice_expense_txs_v1';
+    const STORAGE_KEY_CATEGORIES = 'voice_expense_cats_v1';
+    const STORAGE_KEY_THEME = 'voice_expense_theme_v1';
+
+    const DEFAULT_CATEGORIES = [
+      { id: 'cat_groceries', name: 'Продукты', icon: '🛒', color: '#34C759' },
+      { id: 'cat_cafe',      name: 'Кафе',     icon: '☕', color: '#FF9500' },
+      { id: 'cat_transport', name: 'Транспорт',icon: '🚕', color: '#007AFF' },
+      { id: 'cat_home',      name: 'Дом',      icon: '🏠', color: '#5856D6' },
+      { id: 'cat_shopping',  name: 'Покупки',  icon: '🛍️', color: '#AF52DE' },
+      { id: 'cat_health',    name: 'Здоровье', icon: '💊', color: '#FF2D55' },
+      { id: 'cat_leisure',   name: 'Досуг',    icon: '🍿', color: '#FFCC00' },
+      { id: 'cat_other',     name: 'Разное',   icon: '📦', color: '#8E8E93' }
+    ];
+
+    const DEMO_TRANSACTIONS = [
+      { id: 'tx_1', categoryId: 'cat_groceries', amount: 430, description: 'Хлеб, сыр, молоко', timestamp: Date.now() - 1000 * 60 * 45 },
+      { id: 'tx_2', categoryId: 'cat_cafe',      amount: 250, description: 'Капучино и круассан', timestamp: Date.now() - 1000 * 60 * 120 },
+      { id: 'tx_3', categoryId: 'cat_transport', amount: 380, description: 'Такси в офис', timestamp: Date.now() - 1000 * 60 * 360 }
+    ];
+
+    let state = {
+      categories: [],
+      transactions: [],
+      currentPeriod: 'today',
+      selectedModalCategoryId: null,
+      selectedSimCategoryId: null,
+      pendingIslandTransaction: null
+    };
+
+    /* ==========================================================================
+       2. SPEECH PARSER ENGINE (RUSSIAN NUMBERS & PHRASES)
+       ========================================================================== */
+    const NUM_WORDS = {
+      'ноль': 0, 'нуль': 0,
+      'один': 1, 'одна': 1, 'одну': 1,
+      'два': 2, 'две': 2,
+      'три': 3,
+      'четыре': 4,
+      'пять': 5,
+      'шесть': 6,
+      'семь': 7,
+      'восемь': 8,
+      'девять': 9,
+      'десять': 10,
+      'одиннадцать': 11, 'двенадцать': 12, 'тринадцать': 13, 'четырнадцать': 14,
+      'пятнадцать': 15, 'шестнадцать': 16, 'семнадцать': 17, 'восемнадцать': 18, 'девятнадцать': 19,
+      'двадцать': 20, 'тридцать': 30, 'сорок': 40, 'пятьдесят': 50,
+      'шестьдесят': 60, 'семьдесят': 70, 'восемьдесят': 80, 'девяносто': 90,
+      'сто': 100, 'ста': 100, 'двести': 200, 'триста': 300, 'четыреста': 400,
+      'пятьсот': 500, 'шестьсот': 600, 'семьсот': 700, 'восемьсот': 800, 'девятьсот': 900,
+      'сотка': 100, 'сотку': 100, 'сотен': 100,
+      'пятихатка': 500, 'пятихатку': 500,
+      'косарь': 1000, 'косаря': 1000, 'косарей': 1000, 'штука': 1000, 'штуку': 1000, 'штуки': 1000, 'тыща': 1000, 'тыщу': 1000,
+      'тысяча': 1000, 'тысячи': 1000, 'тысяч': 1000,
+      'миллион': 1000000, 'миллиона': 1000000, 'миллионов': 1000000
+    };
+
+    function isNumWord(w) {
+      return NUM_WORDS[w] !== undefined || w === 'полторы' || w === 'полтора' || w === 'полтораста';
+    }
+
+    function wordsToNumber(words) {
+      for (const w of words) {
+        if (!isNumWord(w)) return null;
+      }
+      let total = 0;
+      let current = 0;
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i];
+        if (w === 'полторы' || w === 'полтора') {
+          if (i + 1 < words.length && (words[i + 1].startsWith('тысяч') || words[i + 1].startsWith('тыщ'))) {
+            current += 1500;
+            i++;
+          } else {
+            current += 1.5;
+          }
+          continue;
+        }
+        if (w === 'полтораста') {
+          current += 150;
+          continue;
+        }
+        const val = NUM_WORDS[w];
+        if (val === 1000 || val === 1000000) {
+          if (current === 0) current = 1;
+          total += current * val;
+          current = 0;
+        } else {
+          current += val;
+        }
+      }
+      return total + current;
+    }
+
+    function parseVoiceExpense(rawText) {
+      if (!rawText || !rawText.trim()) {
+        return { amount: 0, description: '', raw: '' };
+      }
+
+      let text = rawText.trim().toLowerCase();
+      text = text.replace(/[,;]/g, ' ')
+                 .replace(/[₽]/g, ' руб ')
+                 .replace(/\s+/g, ' ')
+                 .trim();
+
+      let extractedAmount = 0;
+      let remainingText = text;
+
+      // 1. Check for numbers with thousands formatting: e.g. "3.700", "25.000", "3 700", "1.500.000"
+      const thousandsRegex = /\b(\d{1,3}(?:[.\s]\d{3})+)(?:[.,](\d{1,2}))?\b/;
+      const thMatch = text.match(thousandsRegex);
+
+      if (thMatch) {
+        const wholeStr = thMatch[1].replace(/[.\s]/g, '');
+        const decStr = thMatch[2] ? '.' + thMatch[2] : '';
+        const parsedNum = parseFloat(wholeStr + decStr);
+        if (!isNaN(parsedNum) && parsedNum > 0) {
+          extractedAmount = parsedNum;
+          remainingText = text.replace(thMatch[0], ' ');
+        }
+      }
+
+      // 2. Normal digit match (single number or decimal with 1-2 kopeck digits): e.g. "430", "450.50", "250,5"
+      if (!extractedAmount) {
+        const digitRegex = /\b(\d+(?:[.,]\d{1,2})?)\b/;
+        const digitMatch = text.match(digitRegex);
+        if (digitMatch) {
+          const numStr = digitMatch[1].replace(',', '.');
+          const parsedNum = parseFloat(numStr);
+          if (!isNaN(parsedNum) && parsedNum > 0) {
+            extractedAmount = parsedNum;
+            remainingText = text.replace(digitRegex, ' ');
+          }
+        }
+      }
+
+      // 3. Number words (e.g. "три тысячи семьсот", "двести", "косарь")
+      if (!extractedAmount) {
+        const tokens = text.split(' ').filter(Boolean);
+        let bestNum = 0;
+        let bestSlice = null;
+
+        for (let len = tokens.length; len >= 1; len--) {
+          for (let start = 0; start <= tokens.length - len; start++) {
+            const end = start + len;
+            const slice = tokens.slice(start, end);
+            const num = wordsToNumber(slice);
+            if (num !== null && num > 0) {
+              bestNum = num;
+              bestSlice = { start, end };
+              break;
+            }
+          }
+          if (bestSlice) break;
+        }
+
+        if (bestNum > 0 && bestSlice) {
+          extractedAmount = bestNum;
+          const before = tokens.slice(0, bestSlice.start);
+          const after = tokens.slice(bestSlice.end);
+          remainingText = [...before, ...after].join(' ');
+        }
+      }
+
+      let cleanedDesc = remainingText
+        .replace(/(^|\s)(рублей|рубля|рубль|руб|р|₽)($|\s)/gi, ' ')
+        .replace(/(^|\s)(за|на сумму|стоимостью|по цене|в размере|купил|купила|оплатил|оплатила)($|\s)/gi, ' ')
+        .replace(/(^|\s)(на)($|\s)/gi, ' ')
+        .replace(/[.,!?;:()"]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (cleanedDesc.length > 0) {
+        cleanedDesc = cleanedDesc.charAt(0).toUpperCase() + cleanedDesc.slice(1);
+      }
+
+      return {
+        amount: extractedAmount,
+        description: cleanedDesc,
+        raw: rawText
+      };
+    }
+
+    /* ==========================================================================
+       3. STORAGE & DATA MANAGEMENT
+       ========================================================================== */
+    function loadData() {
+      try {
+        const storedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES);
+        state.categories = storedCats ? JSON.parse(storedCats) : [...DEFAULT_CATEGORIES];
+
+        const storedTxs = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
+        state.transactions = storedTxs ? JSON.parse(storedTxs) : [...DEMO_TRANSACTIONS];
+      } catch (e) {
+        console.error('Error loading data:', e);
+        state.categories = [...DEFAULT_CATEGORIES];
+        state.transactions = [...DEMO_TRANSACTIONS];
+      }
+    }
+
+    
+    /* ==========================================================================
+       GOOGLE SHEETS SYNC ENGINE (Voice costs G v4.0)
+       ========================================================================== */
+    const STORAGE_KEY_G_URL = 'voice_g_script_url';
+    const STORAGE_KEY_G_AUTOSYNC = 'voice_g_autosync';
+    const STORAGE_KEY_G_LAST_SYNC = 'voice_g_last_sync';
+
+    let gConfig = {
+      url: localStorage.getItem(STORAGE_KEY_G_URL) || '',
+      autoSync: localStorage.getItem(STORAGE_KEY_G_AUTOSYNC) === 'true',
+      lastSync: Number(localStorage.getItem(STORAGE_KEY_G_LAST_SYNC) || 0)
+    };
+
+    const GOOGLE_APPS_SCRIPT_TEMPLATE = `// Google Apps Script code for Voice costs G
+function doGet(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var rows = sheet.getDataRange().getValues();
+    if (rows.length <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "ok", transactions: [] }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    var transactions = [];
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r[0]) continue;
+      transactions.push({
+        id: String(r[0]),
+        categoryId: String(r[3] || 'cat_other'),
+        amount: Number(r[4] || 0),
+        description: String(r[5] || ''),
+        timestamp: Number(r[6] || 0)
+      });
+    }
+    return ContentService.createTextOutput(JSON.stringify({ status: "ok", transactions: transactions }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var body = JSON.parse(e.postData.contents);
+
+    if (body.action === 'sync_all') {
+      sheet.clear();
+      sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма", "Описание", "Timestamp"]);
+      sheet.getRange(1, 1, 1, 7).setFontWeight("bold");
+      if (body.transactions && body.transactions.length > 0) {
+        var dataRows = body.transactions.map(function(tx) {
+          var d = new Date(tx.timestamp || Date.now());
+          var dateStr = (d.getDate() < 10 ? '0' : '') + d.getDate() + '.' + ((d.getMonth() + 1) < 10 ? '0' : '') + (d.getMonth() + 1) + '.' + d.getFullYear();
+          var timeStr = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+          return [tx.id, dateStr, timeStr, tx.categoryId, tx.amount, tx.description, tx.timestamp];
+        });
+        sheet.getRange(2, 1, dataRows.length, 7).setValues(dataRows);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "ok", count: (body.transactions ? body.transactions.length : 0) }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } else if (body.action === 'add') {
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма", "Описание", "Timestamp"]);
+        sheet.getRange(1, 1, 1, 7).setFontWeight("bold");
+      }
+      var tx = body.transaction;
+      var d = new Date(tx.timestamp || Date.now());
+      var dateStr = (d.getDate() < 10 ? '0' : '') + d.getDate() + '.' + ((d.getMonth() + 1) < 10 ? '0' : '') + (d.getMonth() + 1) + '.' + d.getFullYear();
+      var timeStr = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+      sheet.appendRow([tx.id, dateStr, timeStr, tx.categoryId, tx.amount, tx.description, tx.timestamp]);
+      return ContentService.createTextOutput(JSON.stringify({ status: "ok" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ status: "ok" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+    function updateGSyncStatusBadge(status, text) {
+      const dot = document.getElementById('gSyncDot');
+      const icon = document.getElementById('gStatusIcon');
+      const label = document.getElementById('gStatusText');
+
+      if (dot) dot.className = 'g-sync-dot ' + status;
+      if (icon) {
+        if (status === 'connected') icon.textContent = '🟢';
+        else if (status === 'syncing') icon.textContent = '🔄';
+        else if (status === 'error') icon.textContent = '🔴';
+        else icon.textContent = '⚪';
+      }
+      if (label && text) label.textContent = text;
+    }
+
+    function initGoogleSheetsUI() {
+      const urlInput = document.getElementById('inputGScriptUrl');
+      const autoSyncCheck = document.getElementById('checkboxGAutoSync');
+
+      if (urlInput) urlInput.value = gConfig.url;
+      if (autoSyncCheck) autoSyncCheck.checked = gConfig.autoSync;
+
+      if (gConfig.url) {
+        const lastDateStr = gConfig.lastSync ? formatDate(gConfig.lastSync) : 'не выполнялась';
+        updateGSyncStatusBadge('connected', 'Подключено • Синхр: ' + lastDateStr);
+      } else {
+        updateGSyncStatusBadge('', 'Таблица не подключена');
+      }
+
+      if (urlInput) {
+        urlInput.addEventListener('change', (e) => {
+          gConfig.url = e.target.value.trim();
+          localStorage.setItem(STORAGE_KEY_G_URL, gConfig.url);
+          checkGConnection();
+        });
+      }
+      if (autoSyncCheck) {
+        autoSyncCheck.addEventListener('change', (e) => {
+          gConfig.autoSync = e.target.checked;
+          localStorage.setItem(STORAGE_KEY_G_AUTOSYNC, gConfig.autoSync ? 'true' : 'false');
+        });
+      }
+    }
+
+    function copyGAppsScriptCode() {
+      navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_TEMPLATE).then(() => {
+        const icon = document.getElementById('copyScriptIcon');
+        const text = document.getElementById('copyScriptText');
+        if (icon) icon.textContent = '✅';
+        if (text) text.textContent = 'Код скопирован в буфер обмена!';
+        setTimeout(() => {
+          if (icon) icon.textContent = '📋';
+          if (text) text.textContent = 'Скопировать готовый код для Google Скрипта';
+        }, 3000);
+      }).catch(() => {
+        alert('Не удалось скопировать. Пожалуйста, скопируйте код вручную.');
+      });
+    }
+
+    async function checkGConnection() {
+      if (!gConfig.url) {
+        updateGSyncStatusBadge('', 'Таблица не подключена');
+        return;
+      }
+      try {
+        updateGSyncStatusBadge('syncing', 'Проверка связи с Google...');
+        const res = await fetch(gConfig.url, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        const json = await res.json();
+        if (json.status === 'ok') {
+          updateGSyncStatusBadge('connected', 'Связь с Google Таблицей установлена');
+        } else {
+          throw new Error(json.error || 'Ошибка ответа скрипта');
+        }
+      } catch (err) {
+        updateGSyncStatusBadge('error', 'Ошибка связи: ' + err.message);
+      }
+    }
+
+    async function syncPushToGoogle(isSilent = false) {
+      if (!gConfig.url) {
+        if (!isSilent) alert('Сначала вставьте URL Google Apps Script в поле выше!');
+        return;
+      }
+      try {
+        updateGSyncStatusBadge('syncing', 'Отправка в Google Таблицу...');
+        const payload = {
+          action: 'sync_all',
+          transactions: state.transactions
+        };
+        const res = await fetch(gConfig.url, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.status === 'ok') {
+          gConfig.lastSync = Date.now();
+          localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
+          updateGSyncStatusBadge('connected', 'Выгружено: ' + formatDate(gConfig.lastSync));
+          if (!isSilent) alert('Успешно! Все расходы (' + state.transactions.length + ' записей) сохранены в Google Таблицу.');
+        } else {
+          throw new Error(json.error || 'Ошибка сервера Google');
+        }
+      } catch (err) {
+        updateGSyncStatusBadge('error', 'Ошибка выгрузки: ' + err.message);
+        if (!isSilent) alert('Ошибка выгрузки в Google: ' + err.message);
+      }
+    }
+
+    async function syncPullFromGoogle() {
+      if (!gConfig.url) {
+        alert('Сначала укажите URL веб-приложения Google Таблицы!');
+        return;
+      }
+      try {
+        updateGSyncStatusBadge('syncing', 'Загрузка из Google Таблицы...');
+        const res = await fetch(gConfig.url, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        const json = await res.json();
+        if (json.status === 'ok' && Array.isArray(json.transactions)) {
+          state.transactions = json.transactions;
+          saveTransactions();
+          render();
+          gConfig.lastSync = Date.now();
+          localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
+          updateGSyncStatusBadge('connected', 'Загружено: ' + formatDate(gConfig.lastSync));
+          alert('Синхронизация успешна! Загружено расходов: ' + state.transactions.length);
+        } else {
+          throw new Error(json.error || 'В таблице нет данных или скрипт вернул ошибку');
+        }
+      } catch (err) {
+        updateGSyncStatusBadge('error', 'Ошибка загрузки: ' + err.message);
+        alert('Ошибка загрузки из Google: ' + err.message);
+      }
+    }
+
+    function triggerGAutoSyncIfEnabled() {
+      if (gConfig.autoSync && gConfig.url) {
+        syncPushToGoogle(true);
+      }
+    }
+
+    function saveTransactions() {
+      localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(state.transactions));
+      render();
+    }
+
+    function saveCategories() {
+      localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
+      render();
+    }
+
+    function getFilteredTransactions() {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const dayOfWeek = now.getDay() || 7;
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1).getTime();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+      return state.transactions.filter(tx => {
+        const time = tx.timestamp;
+        if (state.currentPeriod === 'today') return time >= startOfToday;
+        if (state.currentPeriod === 'week') return time >= startOfWeek;
+        if (state.currentPeriod === 'month') return time >= startOfMonth;
+        return true;
+      });
+    }
+
+    /* ==========================================================================
+       4. SPEECH RECOGNITION & MULTI-SEGMENT PUSH-TO-TALK (VOICE PT v2.0)
+       ========================================================================== */
+    let currentRec = null;
+    let savedSegments = [];
+    let activeSegment = '';
+    let restartTimeout = null;
+    let isPressing = false;
+    let pressStartTime = 0;
+    let activePressCategoryId = null;
+    let pressTimer = null;
+    let isLongPress = false;
+    let isFinalizing = false;
+
+    // Cleans up any stutter, duplicated words or repeated phrases (1-grams, 2-grams, 3-grams, N-grams)
+    function cleanRecognizedText(str) {
+      if (!str) return '';
+      let tokens = str.trim().split(/\s+/);
+
+      // 1. Remove consecutive identical tokens (1-grams): 'собак собак' -> 'собак'
+      let out = [];
+      for (let i = 0; i < tokens.length; i++) {
+        if (i > 0 && tokens[i].toLowerCase() === tokens[i - 1].toLowerCase()) {
+          continue;
+        }
+        out.push(tokens[i]);
+      }
+      tokens = out;
+
+      // 2. Remove any repeated n-gram phrase of length k (from k = floor(len/2) down to 2)
+      // E.g.: '783 корм для собак корм для собак' (k=3) -> '783 корм для собак'
+      // E.g.: 'корм для собак корм для собак' (k=3) -> 'корм для собак'
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const len = tokens.length;
+        for (let k = Math.floor(len / 2); k >= 2; k--) {
+          for (let i = 0; i <= len - 2 * k; i++) {
+            let match = true;
+            for (let j = 0; j < k; j++) {
+              if (tokens[i + j].toLowerCase() !== tokens[i + k + j].toLowerCase()) {
+                match = false;
+                break;
+              }
+            }
+            if (match) {
+              tokens.splice(i + k, k);
+              changed = true;
+              break;
+            }
+          }
+          if (changed) break;
+        }
+      }
+
+      // 3. Suffix echo check: if the end of the tokens matches ANY earlier multi-word slice
+      // E.g.: '783 корм для собак корм для' -> '783 корм для собак'
+      for (let suffixLen = Math.floor(tokens.length / 2); suffixLen >= 2; suffixLen--) {
+        const suffix = tokens.slice(tokens.length - suffixLen).map(t => t.toLowerCase()).join(' ');
+        const rest = tokens.slice(0, tokens.length - suffixLen).map(t => t.toLowerCase()).join(' ');
+        if (rest.includes(suffix)) {
+          tokens = tokens.slice(0, tokens.length - suffixLen);
+          break;
+        }
+      }
+
+      return tokens.join(' ').trim();
+    }
+
+    function commitActiveSegment() {
+      if (!activeSegment || !activeSegment.trim()) return;
+      const chunk = activeSegment.trim();
+      activeSegment = '';
+
+      if (savedSegments.length > 0) {
+        const last = savedSegments[savedSegments.length - 1];
+        const lastLower = last.toLowerCase();
+        const chunkLower = chunk.toLowerCase();
+
+        // 1. If this chunk is identical or is a substring/echo of what was already saved
+        if (lastLower === chunkLower || lastLower.endsWith(chunkLower) || lastLower.includes(chunkLower)) {
+          return;
+        }
+
+        // 2. If this new chunk contains the previous chunk plus new words (cumulative)
+        if (chunkLower.startsWith(lastLower) || chunkLower.includes(lastLower)) {
+          savedSegments[savedSegments.length - 1] = chunk;
+          return;
+        }
+      }
+
+      savedSegments.push(chunk);
+    }
+
+    function showRecordingOverlay(show, text = null) {
+      const el = document.getElementById('recordingOverlay');
+      if (text) document.getElementById('recordingText').innerText = text;
+      if (show) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    }
+
+    function updateLiveRecordingOverlay(isBetweenSegments = false) {
+      const parts = [...savedSegments];
+      if (activeSegment.trim()) {
+        parts.push(activeSegment.trim());
+      }
+      const combined = cleanRecognizedText(parts.join(' '));
+      if (combined) {
+        showRecordingOverlay(true, '«' + combined + (isBetweenSegments ? ' ...' : '') + '»');
+      } else {
+        showRecordingOverlay(true, 'Удерживайте и говорите...');
+      }
+    }
+
+    function clearHoldingStyles() {
+      document.querySelectorAll('.category-card').forEach(c => {
+        c.classList.remove('recording', 'holding');
+      });
+    }
+
+    function handleSpeechResult(rawTranscript, targetCatId) {
+      if (!targetCatId) return;
+
+      const cleanedTranscript = cleanRecognizedText(rawTranscript);
+      const parsed = parseVoiceExpense(cleanedTranscript);
+      const cat = state.categories.find(c => c.id === targetCatId);
+
+      if (parsed.amount <= 0) {
+        openAddEditModal(null, targetCatId, parsed.description || '');
+        return;
+      }
+
+      const tx = {
+        id: 'tx_' + Date.now(),
+        categoryId: targetCatId,
+        amount: parsed.amount,
+        description: parsed.description || cat.name,
+        timestamp: Date.now()
+      };
+
+      triggerDynamicIsland(tx, cat, cleanedTranscript);
+    }
+
+    function startPressCategory(catId, cardEl) {
+      activePressCategoryId = catId;
+      isLongPress = false;
+      pressStartTime = Date.now();
+      cardEl.classList.add('holding');
+
+      if (restartTimeout) {
+        clearTimeout(restartTimeout);
+        restartTimeout = null;
+      }
+      if (currentRec) {
+        try {
+          currentRec.onend = null;
+          currentRec.onerror = null;
+          currentRec.abort();
+        } catch (e) {}
+        currentRec = null;
+      }
+
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        isPressing = true;
+        savedSegments = [];
+        activeSegment = '';
+        cardEl.classList.add('recording');
+
+        updateLiveRecordingOverlay();
+        startRecognitionSession();
+      }, 300);
+    }
+
+    function startRecognitionSession() {
+      if (!isPressing) return;
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        showRecordingOverlay(true, 'Микрофон не поддерживается браузером');
+        setTimeout(() => showRecordingOverlay(false), 2000);
+        return;
+      }
+
+      const rec = new SpeechRecognition();
+      rec.lang = 'ru-RU';
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.maxAlternatives = 1;
+
+      rec.onstart = () => {
+        updateLiveRecordingOverlay();
+      };
+
+      rec.onresult = (event) => {
+        let fullText = '';
+        for (let i = 0; i < event.results.length; i++) {
+          if (event.results[i] && event.results[i][0]) {
+            fullText += event.results[i][0].transcript + ' ';
+          }
+        }
+        activeSegment = fullText.trim();
+        updateLiveRecordingOverlay();
+      };
+
+      rec.onerror = (event) => {
+        console.log('Voice PT recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          isPressing = false;
+          showRecordingOverlay(false);
+          clearHoldingStyles();
+          openModal('modalMicHelp');
+          return;
+        }
+        // Non-fatal errors like 'no-speech' will be handled on onend without aborting hold
+      };
+
+      rec.onend = () => {
+        // Save current chunk into segments buffer with echo protection
+        commitActiveSegment();
+
+        currentRec = null;
+
+        // MULTI-SEGMENT CONCATENATION:
+        // If user is STILL holding the category button, Android paused after a word.
+        // Instantly restart listening for the remaining words!
+        if (isPressing) {
+          updateLiveRecordingOverlay(true);
+          restartTimeout = setTimeout(() => {
+            if (isPressing) {
+              startRecognitionSession();
+            }
+          }, 60);
+        } else {
+          finalizePushRecording(activePressCategoryId);
+        }
+      };
+
+      currentRec = rec;
+      try {
+        rec.start();
+      } catch (e) {
+        console.log('Error starting rec, retrying in 100ms:', e);
+        if (isPressing) {
+          restartTimeout = setTimeout(() => {
+            if (isPressing) {
+              try { rec.start(); } catch (err) {}
+            }
+          }, 100);
+        }
+      }
+    }
+
+    function endPressCategory(catId, cardEl) {
+      clearTimeout(pressTimer);
+      cardEl.classList.remove('holding', 'recording');
+
+      const elapsed = Date.now() - pressStartTime;
+      if (!isLongPress || elapsed < 300) {
+        // Short tap -> Open Quick Manual Entry Modal
+        isPressing = false;
+        if (restartTimeout) {
+          clearTimeout(restartTimeout);
+          restartTimeout = null;
+        }
+        if (currentRec) {
+          try {
+            currentRec.onend = null;
+            currentRec.abort();
+          } catch (e) {}
+          currentRec = null;
+        }
+        clearHoldingStyles();
+        showRecordingOverlay(false);
+        openAddEditModal(null, catId);
+        return;
+      }
+
+      // User released button: mark not pressing
+      isPressing = false;
+      clearHoldingStyles();
+
+      if (restartTimeout) {
+        clearTimeout(restartTimeout);
+        restartTimeout = null;
+      }
+
+      const parts = [...savedSegments];
+      if (activeSegment.trim()) parts.push(activeSegment.trim());
+      const preview = cleanRecognizedText(parts.join(' '));
+      if (preview) {
+        showRecordingOverlay(true, '«' + preview + '» — Обработка...');
+      }
+
+      // Tell recognition to stop audio and commit
+      if (currentRec) {
+        try {
+          currentRec.stop();
+        } catch (e) {}
+      }
+
+      // Allow 220ms for final onresult / onend event to commit
+      setTimeout(() => {
+        finalizePushRecording(catId);
+      }, 220);
+    }
+
+    function finalizePushRecording(catId) {
+      if (isFinalizing) return;
+      isFinalizing = true;
+      setTimeout(() => { isFinalizing = false; }, 400);
+
+      showRecordingOverlay(false);
+
+      commitActiveSegment();
+
+      const rawJoined = savedSegments.join(' ').trim();
+      savedSegments = [];
+      currentRec = null;
+
+      const phrase = cleanRecognizedText(rawJoined);
+
+      if (phrase) {
+        handleSpeechResult(phrase, catId);
+      } else {
+        openAddEditModal(null, catId);
+      }
+    }
+
+    /* ==========================================================================
+       5. CONFIRMATION BANNER (DYNAMIC ISLAND: WAITS FOR OK / CANCEL)
+       ========================================================================== */
+    function triggerDynamicIsland(tx, category, rawPhrase = '') {
+      state.pendingIslandTransaction = tx;
+
+      const island = document.getElementById('dynamicIsland');
+      const iconEl = document.getElementById('islandIcon');
+      const catEl = document.getElementById('islandCategory');
+      const descEl = document.getElementById('islandDesc');
+      const amountEl = document.getElementById('islandAmount');
+      const rawEl = document.getElementById('islandRaw');
+
+      iconEl.textContent = category.icon;
+      catEl.textContent = category.name;
+      descEl.textContent = tx.description;
+      amountEl.textContent = `+${tx.amount.toLocaleString('ru-RU')} ₽`;
+      rawEl.textContent = rawPhrase ? `Сказано: «${rawPhrase}»` : '';
+
+      // Open island without any auto-close timer. Must wait for user action!
+      island.classList.add('visible');
+    }
+
+    function commitPendingIslandTransaction() {
+      if (state.pendingIslandTransaction) {
+        state.transactions.unshift(state.pendingIslandTransaction);
+        state.pendingIslandTransaction = null;
+        saveTransactions();
+      }
+      hideDynamicIsland();
+    }
+
+    function cancelPendingIslandTransaction() {
+      state.pendingIslandTransaction = null;
+      hideDynamicIsland();
+    }
+
+    function hideDynamicIsland() {
+      document.getElementById('dynamicIsland').classList.remove('visible');
+    }
+
+    document.getElementById('islandBtnOk').addEventListener('click', () => {
+      commitPendingIslandTransaction();
+    });
+
+    document.getElementById('islandBtnCancel').addEventListener('click', () => {
+      cancelPendingIslandTransaction();
+    });
+
+    document.getElementById('islandBtnEdit').addEventListener('click', () => {
+      const pending = state.pendingIslandTransaction;
+      if (pending) {
+        cancelPendingIslandTransaction();
+        openAddEditModal(null, pending.categoryId, pending.description, pending.amount);
+      }
+    });
+
+    /* ==========================================================================
+       6. RENDER LOGIC
+       ========================================================================== */
+    function formatCurrency(num) {
+      return num.toLocaleString('ru-RU');
+    }
+
+    function formatDate(ts) {
+      const d = new Date(ts);
+      const today = new Date();
+      const isToday = d.toDateString() === today.toDateString();
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+
+      if (isToday) {
+        return `Сегодня, ${day}.${month} в ${hours}:${mins}`;
+      }
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const isYesterday = d.toDateString() === yesterday.toDateString();
+      if (isYesterday) {
+        return `Вчера, ${day}.${month} в ${hours}:${mins}`;
+      }
+      return `${day}.${month}.${d.getFullYear()} в ${hours}:${mins}`;
+    }
+
+    function render() {
+      const filtered = getFilteredTransactions();
+
+      // 1. Calculate totals
+      const totalAmount = filtered.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+      document.getElementById('totalBalanceAmount').textContent = formatCurrency(totalAmount);
+
+      // Update Period Title
+      const periodLabels = {
+        today: 'Расходы за сегодня',
+        week: 'Расходы за неделю',
+        month: 'Расходы за месяц',
+        all: 'Все расходы за всё время'
+      };
+      document.getElementById('balanceLabel').textContent = periodLabels[state.currentPeriod];
+
+      // Update History Badge in Header
+      document.getElementById('historyHeaderBadge').textContent = filtered.length;
+
+      // 2. Render 8 Categories Grid
+      const grid = document.getElementById('categoriesGrid');
+      grid.innerHTML = '';
+
+      const catTotals = {};
+      state.categories.forEach(c => catTotals[c.id] = 0);
+      filtered.forEach(tx => {
+        if (catTotals[tx.categoryId] !== undefined) {
+          catTotals[tx.categoryId] += Number(tx.amount || 0);
+        }
+      });
+
+      state.categories.forEach(cat => {
+        const spent = catTotals[cat.id] || 0;
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        card.style.setProperty('--card-color', cat.color);
+        card.innerHTML = `
+          <div class="card-color-stripe"></div>
+          <div class="card-top">
+            <div class="category-icon-wrapper">${cat.icon}</div>
+            <div class="mic-badge">🎙️</div>
+          </div>
+          <div class="card-bottom">
+            <span class="category-name">${cat.name}</span>
+            <span class="category-amount">${formatCurrency(spent)} ₽</span>
+          </div>
+        `;
+
+        card.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          try { card.setPointerCapture(e.pointerId); } catch (err) {}
+          startPressCategory(cat.id, card);
+        });
+
+        card.addEventListener('pointerup', (e) => {
+          e.preventDefault();
+          try { if (card.hasPointerCapture && card.hasPointerCapture(e.pointerId)) card.releasePointerCapture(e.pointerId); } catch (err) {}
+          endPressCategory(cat.id, card);
+        });
+
+        card.addEventListener('pointercancel', (e) => {
+          try { if (card.hasPointerCapture && card.hasPointerCapture(e.pointerId)) card.releasePointerCapture(e.pointerId); } catch (err) {}
+          endPressCategory(cat.id, card);
+        });
+
+        card.addEventListener('contextmenu', (e) => e.preventDefault());
+        card.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        grid.appendChild(card);
+      });
+
+      // 3. Render Segmented Progress Bar & Legend
+      const bar = document.getElementById('segmentedBar');
+      const legend = document.getElementById('statsLegend');
+      bar.innerHTML = '';
+      legend.innerHTML = '';
+
+      if (totalAmount > 0) {
+        state.categories.forEach(cat => {
+          const spent = catTotals[cat.id] || 0;
+          if (spent > 0) {
+            const percent = ((spent / totalAmount) * 100);
+            
+            const seg = document.createElement('div');
+            seg.className = 'bar-segment';
+            seg.style.width = `${percent}%`;
+            seg.style.backgroundColor = cat.color;
+            seg.title = `${cat.name}: ${formatCurrency(spent)} ₽ (${percent.toFixed(0)}%)`;
+            bar.appendChild(seg);
+
+            const leg = document.createElement('div');
+            leg.className = 'legend-item';
+            leg.innerHTML = `
+              <span class="legend-dot" style="background-color: ${cat.color};"></span>
+              <span>${cat.name} (${percent.toFixed(0)}%)</span>
+            `;
+            legend.appendChild(leg);
+          }
+        });
+      } else {
+        bar.innerHTML = '<div style="width:100%; height:100%; background:rgba(120,120,128,0.2);"></div>';
+        legend.innerHTML = '<span style="font-size:11px; color:var(--text-tertiary);">Нет расходов за период</span>';
+      }
+
+      // 4. Render History List in Modal
+      renderHistoryModalList(filtered);
+    }
+
+    function renderHistoryModalList(filtered) {
+      const historyList = document.getElementById('historyListModal');
+      historyList.innerHTML = '';
+
+      if (filtered.length === 0) {
+        historyList.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">🍃</span>
+            <span class="empty-text">Нет операций за этот период.<br>Зажмите карточку категории и назовите трату!</span>
+          </div>
+        `;
+      } else {
+        const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
+        sorted.forEach(tx => {
+          const cat = state.categories.find(c => c.id === tx.categoryId) || { name: 'Другое', icon: '📦', color: '#8E8E93' };
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          item.innerHTML = `
+            <div class="item-left">
+              <div class="item-icon" style="color: ${cat.color};">${cat.icon}</div>
+              <div class="item-info">
+                <span class="item-desc">${escapeHtml(tx.description)}</span>
+                <span class="item-meta">
+                  <span>${cat.name}</span> • <span>${formatDate(tx.timestamp)}</span>
+                </span>
+              </div>
+            </div>
+            <div class="item-right">
+              <span class="item-amount">-${formatCurrency(Number(tx.amount))} ₽</span>
+              <button type="button" class="btn-item-delete" title="Удалить запись" aria-label="Удалить">🗑️</button>
+            </div>
+          `;
+
+          const delBtn = item.querySelector('.btn-item-delete');
+          if (delBtn) {
+            delBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (confirm(`Удалить «${tx.description || cat.name}» (${formatCurrency(Number(tx.amount))} ₽)?`)) {
+                state.transactions = state.transactions.filter(t => t.id !== tx.id);
+                saveTransactions();
+                render();
+              }
+            });
+          }
+
+          item.addEventListener('click', () => {
+            closeModal('modalHistory');
+            openAddEditModal(tx.id);
+          });
+          historyList.appendChild(item);
+        });
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* ==========================================================================
+       7. MODALS LOGIC
+       ========================================================================== */
+    let modalOpenedTimestamp = 0;
+
+    function openModal(id) {
+      modalOpenedTimestamp = Date.now();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('open');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        // Guard against mobile synthetic ghost clicks immediately after tap
+        if (Date.now() - modalOpenedTimestamp < 350) return;
+        if (e.target === modal) {
+          modal.classList.remove('open');
+        }
+      });
+    });
+
+    /* Quick Add / Edit Expense Modal */
+    function openAddEditModal(txId = null, defaultCatId = null, prefillDesc = '', prefillAmount = '') {
+      const titleEl = document.getElementById('modalEditTitle');
+      const idInput = document.getElementById('editExpenseId');
+      const amountInput = document.getElementById('inputAmount');
+      const descInput = document.getElementById('inputDesc');
+      const dtInput = document.getElementById('inputDateTime');
+      const delBtn = document.getElementById('btnDeleteExpense');
+
+      idInput.value = txId || '';
+
+      if (txId) {
+        titleEl.textContent = 'Редактировать расход';
+        delBtn.classList.remove('hidden');
+        const tx = state.transactions.find(t => t.id === txId);
+        if (tx) {
+          amountInput.value = tx.amount;
+          descInput.value = tx.description;
+          state.selectedModalCategoryId = tx.categoryId;
+          
+          const dt = new Date(tx.timestamp);
+          dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+          dtInput.value = dt.toISOString().slice(0, 16);
+        }
+      } else {
+        titleEl.textContent = 'Добавить расход';
+        delBtn.classList.add('hidden');
+        amountInput.value = prefillAmount || '';
+        descInput.value = prefillDesc || '';
+        state.selectedModalCategoryId = defaultCatId || state.categories[0].id;
+        
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        dtInput.value = now.toISOString().slice(0, 16);
+      }
+
+      renderModalCategoryPills();
+      openModal('modalEdit');
+
+      setTimeout(() => {
+        if (!amountInput.value) {
+          amountInput.focus();
+        } else if (!descInput.value) {
+          descInput.focus();
+        }
+      }, 150);
+    }
+
+    function renderModalCategoryPills() {
+      const container = document.getElementById('modalCategoryPills');
+      container.innerHTML = '';
+      state.categories.forEach(cat => {
+        const pill = document.createElement('div');
+        pill.className = `cat-pill ${cat.id === state.selectedModalCategoryId ? 'selected' : ''}`;
+        pill.innerHTML = `
+          <span class="cat-pill-icon">${cat.icon}</span>
+          <span class="cat-pill-name">${cat.name}</span>
+        `;
+        pill.addEventListener('click', () => {
+          state.selectedModalCategoryId = cat.id;
+          renderModalCategoryPills();
+        });
+        container.appendChild(pill);
+      });
+    }
+
+    function saveExpenseFromModal() {
+      const id = document.getElementById('editExpenseId').value;
+      const amount = parseFloat(document.getElementById('inputAmount').value);
+      const desc = document.getElementById('inputDesc').value.trim();
+      const dtVal = document.getElementById('inputDateTime').value;
+      const timestamp = dtVal ? new Date(dtVal).getTime() : Date.now();
+
+      if (isNaN(amount) || amount <= 0) {
+        alert('Пожалуйста, введите корректную сумму.');
+        return;
+      }
+
+      if (id) {
+        const idx = state.transactions.findIndex(t => t.id === id);
+        if (idx !== -1) {
+          state.transactions[idx] = {
+            ...state.transactions[idx],
+            amount,
+            description: desc || state.categories.find(c => c.id === state.selectedModalCategoryId).name,
+            categoryId: state.selectedModalCategoryId,
+            timestamp
+          };
+        }
+      } else {
+        const newTx = {
+          id: 'tx_' + Date.now(),
+          amount,
+          description: desc || state.categories.find(c => c.id === state.selectedModalCategoryId).name,
+          categoryId: state.selectedModalCategoryId,
+          timestamp
+        };
+        state.transactions.unshift(newTx);
+      }
+
+      saveTransactions();
+      closeModal('modalEdit');
+    }
+
+    function deleteCurrentEditingExpense() {
+      const id = document.getElementById('editExpenseId').value;
+      if (id && confirm('Удалить эту запись о расходе?')) {
+        state.transactions = state.transactions.filter(t => t.id !== id);
+        saveTransactions();
+        closeModal('modalEdit');
+      }
+    }
+
+    /* Voice Simulation Modal */
+    function openVoiceSimulator() {
+      state.selectedSimCategoryId = state.categories[0].id;
+      renderSimCategoryPills();
+      openModal('modalSim');
+    }
+
+    function renderSimCategoryPills() {
+      const container = document.getElementById('simCategoryPills');
+      container.innerHTML = '';
+      state.categories.forEach(cat => {
+        const pill = document.createElement('div');
+        pill.className = `cat-pill ${cat.id === state.selectedSimCategoryId ? 'selected' : ''}`;
+        pill.innerHTML = `
+          <span class="cat-pill-icon">${cat.icon}</span>
+          <span class="cat-pill-name">${cat.name}</span>
+        `;
+        pill.addEventListener('click', () => {
+          state.selectedSimCategoryId = cat.id;
+          renderSimCategoryPills();
+        });
+        container.appendChild(pill);
+      });
+    }
+
+    function applySimChip(phrase, catId) {
+      document.getElementById('inputSimPhrase').value = phrase;
+      state.selectedSimCategoryId = catId;
+      renderSimCategoryPills();
+      executeSimPhrase();
+    }
+
+    function executeSimPhrase() {
+      const phrase = document.getElementById('inputSimPhrase').value.trim();
+      if (!phrase) return;
+      closeModal('modalSim');
+      handleSpeechResult(phrase, state.selectedSimCategoryId);
+    }
+
+    /* Category Settings */
+    function openCategorySettings() {
+      const list = document.getElementById('catSettingsList');
+      list.innerHTML = '';
+
+      state.categories.forEach((cat, index) => {
+        const row = document.createElement('div');
+        row.className = 'cat-setting-row';
+        row.innerHTML = `
+          <input type="text" class="cat-setting-emoji" value="${cat.icon}" maxlength="2" data-idx="${index}">
+          <input type="text" class="cat-setting-name" value="${cat.name}" maxlength="20" data-idx="${index}">
+          <input type="color" class="cat-setting-color" value="${cat.color}" data-idx="${index}">
+        `;
+        list.appendChild(row);
+      });
+
+      openModal('modalSettings');
+    }
+
+    function saveCategoriesSettings() {
+      const emojis = document.querySelectorAll('.cat-setting-emoji');
+      const names = document.querySelectorAll('.cat-setting-name');
+      const colors = document.querySelectorAll('.cat-setting-color');
+
+      emojis.forEach((el, i) => {
+        state.categories[i].icon = el.value.trim() || '📦';
+        state.categories[i].name = names[i].value.trim() || `Категория ${i+1}`;
+        state.categories[i].color = colors[i].value;
+      });
+
+      saveCategories();
+      closeModal('modalSettings');
+    }
+
+    function resetCategoriesToDefault() {
+      if (confirm('Сбросить все 8 категорий к первоначальным названиям и цветам?')) {
+        state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        saveCategories();
+        openCategorySettings();
+      }
+    }
+
+    /* Export & Backup */
+    function exportToCSV() {
+      const catMap = {};
+      state.categories.forEach(c => catMap[c.id] = c.name);
+
+      let csvContent = '\uFEFFДата;Время;Категория;Описание;Сумма (₽)\r\n';
+      const sorted = [...state.transactions].sort((a, b) => b.timestamp - a.timestamp);
+      sorted.forEach(tx => {
+        const d = new Date(tx.timestamp);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        const catName = `"${(catMap[tx.categoryId] || 'Разное').replace(/"/g, '""')}"`;
+        const desc = `"${(tx.description || '').replace(/"/g, '""')}"`;
+        const amount = tx.amount;
+
+        csvContent += `${dateStr};${timeStr};${catName};${desc};${amount}\r\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `expenses_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportToJSON() {
+      const backupData = {
+        version: '2.0.0',
+        exportedAt: new Date().toISOString(),
+        categories: state.categories,
+        transactions: state.transactions
+      };
+
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `voice_expense_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function importFromJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data.transactions)) {
+            state.transactions = data.transactions;
+            if (Array.isArray(data.categories) && data.categories.length === 8) {
+              state.categories = data.categories;
+              localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
+            }
+            saveTransactions();
+            alert('Резервная копия успешно восстановлена!');
+            closeModal('modalBackup');
+          } else {
+            alert('Ошибка: неверный формат файла резервной копии.');
+          }
+        } catch (err) {
+          alert('Ошибка чтения файла JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function clearAllData() {
+      if (confirm('Вы уверены, что хотите удалить ВСЕ расходы? Это действие нельзя отменить.')) {
+        state.transactions = [];
+        saveTransactions();
+        closeModal('modalBackup');
+      }
+    }
+
+    /* ==========================================================================
+       8. THEME SWITCHER & APP INITIALIZATION
+       ========================================================================== */
+    function initTheme() {
+      const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+      if (savedTheme) {
+        setTheme(savedTheme);
+      } else {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+      }
+    }
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem(STORAGE_KEY_THEME, theme);
+      const meta = document.getElementById('meta-theme-color');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#F2F2F7');
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    // Attach Event Listeners
+    document.getElementById('btnThemeToggle').addEventListener('click', toggleTheme);
+    document.getElementById('btnSettings').addEventListener('click', openCategorySettings);
+    document.getElementById('btnBackup').addEventListener('click', () => openModal('modalBackup'));
+    const simBtn = document.getElementById('btnVoiceSim');
+    if (simBtn) simBtn.addEventListener('click', openVoiceSimulator);
+    document.getElementById('btnGSheets').addEventListener('click', () => openModal('modalGSheets'));
+    document.getElementById('btnHistory').addEventListener('click', () => openModal('modalHistory'));
+
+    // Period buttons
+    document.querySelectorAll('.period-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        state.currentPeriod = e.target.dataset.period;
+        render();
+      });
+    });
+
+    // Initialize on page load
+    loadData();
+    initTheme();
+    render();
+
+    // PWA Install Prompt & Service Worker Registration
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const installBtn = document.getElementById('btnInstallPwa');
+      if (installBtn) {
+        installBtn.style.display = 'inline-flex';
+      }
+    });
+
+    const installBtn = document.getElementById('btnInstallPwa');
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          if (outcome === 'accepted') {
+            installBtn.style.display = 'none';
+          }
+          deferredInstallPrompt = null;
+        } else {
+          alert('Чтобы установить приложение: нажмите меню браузера (три точки ⋮) и выберите «Установить приложение» или «Добавить на главный экран».');
+        }
+      });
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

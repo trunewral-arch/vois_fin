@@ -151,6 +151,25 @@
       gap: 6px;
     }
 
+    .version-switch-link {
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: var(--pill-container-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      margin-right: 4px;
+    }
+    .version-switch-link:active {
+      opacity: 0.7;
+      transform: scale(0.96);
+    }
+
     .icon-btn {
       width: 36px;
       height: 36px;
@@ -1105,6 +1124,8 @@
           <span class="app-version-badge">v1.2.5</span>
         </div>
         <div class="top-actions">
+          <a href="voice_pt.html" class="version-switch-link" title="Перейти на v2.0 PT">v2.0</a>
+          <a href="voice_g.html" class="version-switch-link" title="Перейти на v4.0 Google">v4.0 G</a>
           <button id="btnInstallPwa" class="icon-btn" style="display:none;" title="Установить приложение">📲</button>
           <button id="btnHistory" class="icon-btn" title="История расходов">
             📋<span id="historyHeaderBadge" class="history-badge">0</span>
