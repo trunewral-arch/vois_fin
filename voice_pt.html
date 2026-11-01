@@ -1091,7 +1091,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice PT</h1>
-          <span class="app-version-badge">v2.0.1</span>
+          <span class="app-version-badge">v2.0.2</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -1596,29 +1596,84 @@
     let isLongPress = false;
     let isFinalizing = false;
 
-    // Cleans up any stutter, duplicated words or repeated phrases
+    // Cleans up any stutter, duplicated words or repeated phrases (1-grams, 2-grams, 3-grams, N-grams)
     function cleanRecognizedText(str) {
       if (!str) return '';
-      const tokens = str.trim().split(/\s+/);
-      const out = [];
+      let tokens = str.trim().split(/\s+/);
+
+      // 1. Remove consecutive identical tokens (1-grams): 'собак собак' -> 'собак'
+      let out = [];
       for (let i = 0; i < tokens.length; i++) {
         if (i > 0 && tokens[i].toLowerCase() === tokens[i - 1].toLowerCase()) {
           continue;
         }
         out.push(tokens[i]);
       }
-      const finalTokens = [];
-      for (let i = 0; i < out.length; i++) {
-        if (i + 1 < out.length && i >= 2) {
-          if (out[i].toLowerCase() === out[i - 2].toLowerCase() && 
-              out[i + 1].toLowerCase() === out[i - 1].toLowerCase()) {
-            i++;
-            continue;
+      tokens = out;
+
+      // 2. Remove any repeated n-gram phrase of length k (from k = floor(len/2) down to 2)
+      // E.g.: '783 корм для собак корм для собак' (k=3) -> '783 корм для собак'
+      // E.g.: 'корм для собак корм для собак' (k=3) -> 'корм для собак'
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const len = tokens.length;
+        for (let k = Math.floor(len / 2); k >= 2; k--) {
+          for (let i = 0; i <= len - 2 * k; i++) {
+            let match = true;
+            for (let j = 0; j < k; j++) {
+              if (tokens[i + j].toLowerCase() !== tokens[i + k + j].toLowerCase()) {
+                match = false;
+                break;
+              }
+            }
+            if (match) {
+              tokens.splice(i + k, k);
+              changed = true;
+              break;
+            }
           }
+          if (changed) break;
         }
-        finalTokens.push(out[i]);
       }
-      return finalTokens.join(' ').trim();
+
+      // 3. Suffix echo check: if the end of the tokens matches ANY earlier multi-word slice
+      // E.g.: '783 корм для собак корм для' -> '783 корм для собак'
+      for (let suffixLen = Math.floor(tokens.length / 2); suffixLen >= 2; suffixLen--) {
+        const suffix = tokens.slice(tokens.length - suffixLen).map(t => t.toLowerCase()).join(' ');
+        const rest = tokens.slice(0, tokens.length - suffixLen).map(t => t.toLowerCase()).join(' ');
+        if (rest.includes(suffix)) {
+          tokens = tokens.slice(0, tokens.length - suffixLen);
+          break;
+        }
+      }
+
+      return tokens.join(' ').trim();
+    }
+
+    function commitActiveSegment() {
+      if (!activeSegment || !activeSegment.trim()) return;
+      const chunk = activeSegment.trim();
+      activeSegment = '';
+
+      if (savedSegments.length > 0) {
+        const last = savedSegments[savedSegments.length - 1];
+        const lastLower = last.toLowerCase();
+        const chunkLower = chunk.toLowerCase();
+
+        // 1. If this chunk is identical or is a substring/echo of what was already saved
+        if (lastLower === chunkLower || lastLower.endsWith(chunkLower) || lastLower.includes(chunkLower)) {
+          return;
+        }
+
+        // 2. If this new chunk contains the previous chunk plus new words (cumulative)
+        if (chunkLower.startsWith(lastLower) || chunkLower.includes(lastLower)) {
+          savedSegments[savedSegments.length - 1] = chunk;
+          return;
+        }
+      }
+
+      savedSegments.push(chunk);
     }
 
     function showRecordingOverlay(show, text = null) {
@@ -1748,11 +1803,8 @@
       };
 
       rec.onend = () => {
-        // Save current chunk into segments buffer
-        if (activeSegment.trim()) {
-          savedSegments.push(activeSegment.trim());
-          activeSegment = '';
-        }
+        // Save current chunk into segments buffer with echo protection
+        commitActiveSegment();
 
         currentRec = null;
 
@@ -1845,10 +1897,7 @@
 
       showRecordingOverlay(false);
 
-      if (activeSegment && activeSegment.trim()) {
-        savedSegments.push(activeSegment.trim());
-        activeSegment = '';
-      }
+      commitActiveSegment();
 
       const rawJoined = savedSegments.join(' ').trim();
       savedSegments = [];

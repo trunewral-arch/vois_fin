@@ -1072,7 +1072,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice Expense</h1>
-          <span class="app-version-badge">v1.2.2</span>
+          <span class="app-version-badge">v1.2.3</span>
         </div>
         <div class="top-actions">
           <button id="btnInstallPwa" class="icon-btn" style="display:none;" title="Установить приложение">📲</button>
@@ -1574,29 +1574,59 @@
     let isLongPress = false;
     let isFinalizing = false;
 
-    // Cleans up any stutter or duplicated words/tokens
+    // Cleans up any stutter, duplicated words or repeated phrases (1-grams, 2-grams, 3-grams, N-grams)
     function cleanRecognizedText(str) {
       if (!str) return '';
-      const tokens = str.trim().split(/\s+/);
-      const out = [];
+      let tokens = str.trim().split(/\s+/);
+
+      // 1. Remove consecutive identical tokens (1-grams): 'собак собак' -> 'собак'
+      let out = [];
       for (let i = 0; i < tokens.length; i++) {
         if (i > 0 && tokens[i].toLowerCase() === tokens[i - 1].toLowerCase()) {
           continue;
         }
         out.push(tokens[i]);
       }
-      const finalTokens = [];
-      for (let i = 0; i < out.length; i++) {
-        if (i + 1 < out.length && i >= 2) {
-          if (out[i].toLowerCase() === out[i - 2].toLowerCase() && 
-              out[i + 1].toLowerCase() === out[i - 1].toLowerCase()) {
-            i++;
-            continue;
+      tokens = out;
+
+      // 2. Remove any repeated n-gram phrase of length k (from k = floor(len/2) down to 2)
+      // E.g.: '783 корм для собак корм для собак' (k=3) -> '783 корм для собак'
+      // E.g.: 'корм для собак корм для собак' (k=3) -> 'корм для собак'
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const len = tokens.length;
+        for (let k = Math.floor(len / 2); k >= 2; k--) {
+          for (let i = 0; i <= len - 2 * k; i++) {
+            let match = true;
+            for (let j = 0; j < k; j++) {
+              if (tokens[i + j].toLowerCase() !== tokens[i + k + j].toLowerCase()) {
+                match = false;
+                break;
+              }
+            }
+            if (match) {
+              tokens.splice(i + k, k);
+              changed = true;
+              break;
+            }
           }
+          if (changed) break;
         }
-        finalTokens.push(out[i]);
       }
-      return finalTokens.join(' ').trim();
+
+      // 3. Suffix echo check: if the end of the tokens matches ANY earlier multi-word slice
+      // E.g.: '783 корм для собак корм для' -> '783 корм для собак'
+      for (let suffixLen = Math.floor(tokens.length / 2); suffixLen >= 2; suffixLen--) {
+        const suffix = tokens.slice(tokens.length - suffixLen).map(t => t.toLowerCase()).join(' ');
+        const rest = tokens.slice(0, tokens.length - suffixLen).map(t => t.toLowerCase()).join(' ');
+        if (rest.includes(suffix)) {
+          tokens = tokens.slice(0, tokens.length - suffixLen);
+          break;
+        }
+      }
+
+      return tokens.join(' ').trim();
     }
 
     function showRecordingOverlay(show, text = null) {
