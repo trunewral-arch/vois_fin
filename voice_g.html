@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest_g.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>Voice costs G v4.0.5 — Голосовой учёт расходов (Google Sheets Sync)</title>
+  <title>Voice costs G v4.0.6 — Голосовой учёт расходов (Google Sheets Sync)</title>
 
   <style>
     :root {
@@ -1216,7 +1216,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice costs G</h1>
-          <span class="app-version-badge">v4.0.5</span>
+          <span class="app-version-badge">v4.0.6</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -2085,17 +2085,29 @@ function doPost(e) {
       }
     }
 
+    // Состояния для исключения гонки запросов (Race Condition)
+    let isSyncPulling = false;
+    let isSyncPushing = false;
+    let lastLocalMutationTime = 0; // Время последнего локального добавления/изменения/удаления
+    const pendingUnpushedTxIds = new Set(); // ID транзакций, добавленных локально и ещё не выгруженных
+    const pendingDeletedTxIds = new Set();  // ID транзакций, удалённых локально и ещё не удалённых в Google
+    let autoSyncDebounceTimer = null;
+
     async function syncPushToGoogle(isSilent = false) {
       if (!gConfig.url) {
         if (!isSilent) alert('Сначала вставьте URL Google Apps Script в поле выше!');
         return;
       }
+      if (isSyncPushing) return; // Защита от одновременных push-запросов
+      isSyncPushing = true;
       try {
         updateGSyncStatusBadge('syncing', 'Отправка в Google Таблицу...');
+        const txsSnapshot = [...state.transactions];
+        const catsSnapshot = [...state.categories];
         const payload = {
           action: 'sync_all',
-          transactions: state.transactions,
-          categories: state.categories
+          transactions: txsSnapshot,
+          categories: catsSnapshot
         };
         const res = await fetch(gConfig.url, {
           method: 'POST',
@@ -2115,6 +2127,10 @@ function doPost(e) {
         }
 
         if (json.status === 'ok') {
+          // Успешно выгружено в Google Таблицу: подтверждаем и снимаем флаги очереди
+          txsSnapshot.forEach(tx => pendingUnpushedTxIds.delete(tx.id));
+          pendingDeletedTxIds.clear();
+
           gConfig.lastSync = Date.now();
           localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
           updateGSyncStatusBadge('connected', 'Выгружено: ' + formatDate(gConfig.lastSync));
@@ -2129,17 +2145,35 @@ function doPost(e) {
         if (!isSilent) {
           alert('Ошибка выгрузки в Google:\n' + err.message);
         }
+      } finally {
+        isSyncPushing = false;
       }
     }
 
-        let isSyncPulling = false;
     async function syncPullFromGoogle(isSilent = false) {
       if (!gConfig.url) {
         if (!isSilent) alert('Сначала укажите URL веб-приложения Google Таблицы!');
         return;
       }
+
+      // Не запускаем фоновый pull, если:
+      // 1. Уже идёт pull
+      // 2. В данный момент идёт push
+      // 3. Запланирована неотправленная выгрузка (debounce timer)
+      // 4. Пользователь вносил локальные правки менее 4 секунд назад
+      // 5. Открыто окно подтверждения Dynamic Island (пользователь надиктовал трату)
       if (isSyncPulling) return;
+      if (isSilent) {
+        if (isSyncPushing) return;
+        if (autoSyncDebounceTimer !== null) return;
+        if (Date.now() - lastLocalMutationTime < 4000) return;
+        const island = document.getElementById('dynamicIsland');
+        if (island && island.classList.contains('visible')) return;
+      }
+
       isSyncPulling = true;
+      const pullStartTime = Date.now();
+
       try {
         updateGSyncStatusBadge('syncing', 'Синхронизация с Google Таблицей...');
         const res = await fetch(gConfig.url, {
@@ -2158,6 +2192,14 @@ function doPost(e) {
           throw new Error('Ошибка парсинга ответа Google Таблицы');
         }
 
+        // ЗАЩИТА ОТ ГОНКИ ЗАПРОСОВ:
+        // Если пользователь внёс локальную трату ПОСЛЕ того, как мы отправили этот GET-запрос,
+        // ответ от Google содержит устаревшую копию (до добавления траты) и не должен затирать экран!
+        if (pullStartTime < lastLocalMutationTime) {
+          console.warn('Пропущен устаревший ответ синхронизации: локальные данные новее ответа Google');
+          return;
+        }
+
         if (json.status === 'ok') {
           // 1. Синхронизируем категории из Google Таблицы (если есть лист Категории)
           if (Array.isArray(json.categories) && json.categories.length === 8) {
@@ -2169,13 +2211,23 @@ function doPost(e) {
             }
           }
 
-          // 2. Синхронизируем расходы
+          // 2. Синхронизируем расходы с защитой локальных неподтверждённых трат
           if (Array.isArray(json.transactions)) {
+            // Исключаем удалённые локально записи, которые ещё не выгружены в Google
+            const incomingFiltered = json.transactions.filter(t => !pendingDeletedTxIds.has(t.id));
+
+            // Сохраняем локальные траты, которых ещё нет в Google
+            const incomingIds = new Set(incomingFiltered.map(t => t.id));
+            const unpushedLocalTxs = state.transactions.filter(t => pendingUnpushedTxIds.has(t.id) && !incomingIds.has(t.id));
+
+            // Объединяем: неподтверждённые локальные + данные из Google Таблицы
+            const mergedTxs = [...unpushedLocalTxs, ...incomingFiltered];
+
             const currentStr = JSON.stringify(state.transactions);
-            const incomingStr = JSON.stringify(json.transactions);
-            if (currentStr !== incomingStr) {
-              state.transactions = json.transactions;
-              saveTransactions(true);
+            const mergedStr = JSON.stringify(mergedTxs);
+            if (currentStr !== mergedStr) {
+              state.transactions = mergedTxs;
+              saveTransactions(true); // Сохраняем локально без повторного автопуша
             }
           }
 
@@ -2199,13 +2251,18 @@ function doPost(e) {
       }
     }
 
-    let autoSyncDebounceTimer = null;
-    function triggerGAutoSyncIfEnabled() {
+    function triggerGAutoSyncIfEnabled(immediate = false) {
       if (gConfig.autoSync && gConfig.url) {
         clearTimeout(autoSyncDebounceTimer);
-        autoSyncDebounceTimer = setTimeout(() => {
+        if (immediate) {
+          autoSyncDebounceTimer = null;
           syncPushToGoogle(true);
-        }, 500);
+        } else {
+          autoSyncDebounceTimer = setTimeout(() => {
+            autoSyncDebounceTimer = null;
+            syncPushToGoogle(true);
+          }, 350);
+        }
       }
     }
 
@@ -2228,12 +2285,12 @@ function doPost(e) {
         }
       });
 
-      // 3. Быстрый фоновый опрос каждые 6 секунд для живой синхронизации
+      // 3. Фоновый опрос каждые 12 секунд для живой синхронизации без перегрузки Google Apps Script
       setInterval(() => {
         if (document.visibilityState === 'visible' && gConfig.url) {
           syncPullFromGoogle(true);
         }
-      }, 6000);
+      }, 12000);
     }
 
     function saveTransactions(skipAutoSync = false) {
@@ -2623,9 +2680,12 @@ function doPost(e) {
 
     function commitPendingIslandTransaction() {
       if (state.pendingIslandTransaction) {
+        lastLocalMutationTime = Date.now();
+        pendingUnpushedTxIds.add(state.pendingIslandTransaction.id);
         state.transactions.unshift(state.pendingIslandTransaction);
         state.pendingIslandTransaction = null;
         saveTransactions();
+        triggerGAutoSyncIfEnabled(true);
       }
       hideDynamicIsland();
     }
@@ -2833,8 +2893,12 @@ function doPost(e) {
               e.preventDefault();
               e.stopPropagation();
               if (confirm(`Удалить «${tx.description || cat.name}» (${formatCurrency(Number(tx.amount))} ₽)?`)) {
+                lastLocalMutationTime = Date.now();
+                pendingDeletedTxIds.add(tx.id);
+                pendingUnpushedTxIds.delete(tx.id);
                 state.transactions = state.transactions.filter(t => t.id !== tx.id);
                 saveTransactions();
+                triggerGAutoSyncIfEnabled(true);
                 render();
               }
             });
@@ -2958,7 +3022,9 @@ function doPost(e) {
         return;
       }
 
+      lastLocalMutationTime = Date.now();
       if (id) {
+        pendingUnpushedTxIds.add(id);
         const idx = state.transactions.findIndex(t => t.id === id);
         if (idx !== -1) {
           state.transactions[idx] = {
@@ -2977,18 +3043,24 @@ function doPost(e) {
           categoryId: state.selectedModalCategoryId,
           timestamp
         };
+        pendingUnpushedTxIds.add(newTx.id);
         state.transactions.unshift(newTx);
       }
 
       saveTransactions();
+      triggerGAutoSyncIfEnabled(true);
       closeModal('modalEdit');
     }
 
     function deleteCurrentEditingExpense() {
       const id = document.getElementById('editExpenseId').value;
       if (id && confirm('Удалить эту запись о расходе?')) {
+        lastLocalMutationTime = Date.now();
+        pendingDeletedTxIds.add(id);
+        pendingUnpushedTxIds.delete(id);
         state.transactions = state.transactions.filter(t => t.id !== id);
         saveTransactions();
+        triggerGAutoSyncIfEnabled(true);
         closeModal('modalEdit');
       }
     }
@@ -3154,8 +3226,12 @@ function doPost(e) {
 
     function clearAllData() {
       if (confirm('Вы уверены, что хотите удалить ВСЕ расходы? Это действие нельзя отменить.')) {
+        lastLocalMutationTime = Date.now();
+        state.transactions.forEach(t => pendingDeletedTxIds.add(t.id));
+        pendingUnpushedTxIds.clear();
         state.transactions = [];
         saveTransactions();
+        triggerGAutoSyncIfEnabled(true);
         closeModal('modalBackup');
       }
     }
