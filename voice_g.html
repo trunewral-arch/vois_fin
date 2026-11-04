@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest_g.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>Voice costs G v4.0.4 — Голосовой учёт расходов (Google Sheets Sync)</title>
+  <title>Voice costs G v4.0.5 — Голосовой учёт расходов (Google Sheets Sync)</title>
 
   <style>
     :root {
@@ -1216,7 +1216,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice costs G</h1>
-          <span class="app-version-badge">v4.0.4</span>
+          <span class="app-version-badge">v4.0.5</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -1564,7 +1564,7 @@
       { id: 'cat_loans',          name: 'Займы/Кредиты',          icon: '💳', color: '#34C759' },
       { id: 'cat_repair',         name: 'Дом/Ремонт',             icon: '🛠️', color: '#FF9500' },
       { id: 'cat_invest',         name: 'Инвестиции/Капитал',     icon: '📈', color: '#007AFF' },
-      { id: 'cat_leisure_cafe',   name: 'Отдых+Кафе+Покупки',     icon: '☕', color: '#5856D6' },
+      { id: 'cat_leisure_cafe',   name: 'Нямки+Отдых+Покупки',    icon: '☕', color: '#5856D6' },
       { id: 'cat_pharmacy',       name: 'Аптека/Лекарства',       icon: '💊', color: '#AF52DE' },
       { id: 'cat_groceries_chem', name: 'Продукты+БХим',          icon: '🛒', color: '#FF2D55' },
       { id: 'cat_transport_comm', name: 'Транспорт+Связь+Свет',   icon: '🚗', color: '#FFCC00' },
@@ -1767,11 +1767,19 @@
       try {
         const storedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES);
         const catVer = localStorage.getItem('voice_g_cat_ver');
-        // Автоматическая миграция на категории 4.0.3 при первом запуске
-        if (catVer !== '4.0.3') {
-          state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        // Автоматическая миграция на категории 4.0.5 при первом запуске
+        if (catVer !== '4.0.5') {
+          let cats = storedCats ? JSON.parse(storedCats) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+          // Обновляем название 'Отдых+Кафе+Покупки' -> 'Нямки+Отдых+Покупки'
+          const cafeCat = cats.find(c => c.id === 'cat_leisure_cafe' || c.name === 'Отдых+Кафе+Покупки');
+          if (cafeCat) {
+            cafeCat.name = 'Нямки+Отдых+Покупки';
+          } else {
+            cats = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+          }
+          state.categories = cats;
           localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
-          localStorage.setItem('voice_g_cat_ver', '4.0.3');
+          localStorage.setItem('voice_g_cat_ver', '4.0.5');
         } else {
           state.categories = storedCats ? JSON.parse(storedCats) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         }
@@ -1798,40 +1806,89 @@
       lastSync: Number(localStorage.getItem(STORAGE_KEY_G_LAST_SYNC) || 0)
     };
 
-    const GOOGLE_APPS_SCRIPT_TEMPLATE = `// Google Apps Script для Voice costs G
+    const GOOGLE_APPS_SCRIPT_TEMPLATE = `// Google Apps Script для Voice costs G (Синхронизация расходов и категорий)
 // Вставьте этот код в: Меню таблицы -> Расширения -> Apps Script
 
-function getSheet() {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (ss) return ss.getActiveSheet();
-  } catch(e) {}
+function getSpreadsheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) return ss;
   // Резервный поиск по ID таблицы пользователя
-  return SpreadsheetApp.openById("1IHrVexufdaM8TJZ2UuotwygyBdEAXTxUoK-jvkYpVSg").getActiveSheet();
+  return SpreadsheetApp.openById("1IHrVexufdaM8TJZ2UuotwygyBdEAXTxUoK-jvkYpVSg");
+}
+
+function getTxSheet(ss) {
+  var sheet = ss.getSheetByName("Расходы");
+  if (!sheet) {
+    sheet = ss.getSheets()[0]; // Берем существующий лист с расходами
+  }
+  return sheet;
+}
+
+function getCatSheet(ss) {
+  var sheet = ss.getSheetByName("Категории");
+  if (!sheet) {
+    sheet = ss.insertSheet("Категории");
+    sheet.appendRow(["ID", "Название", "Иконка", "Цвет"]);
+    sheet.getRange(1, 1, 1, 4).setFontWeight("bold");
+    var defaultCats = [
+      ["cat_loans", "Займы/Кредиты", "💳", "#34C759"],
+      ["cat_repair", "Дом/Ремонт", "🛠️", "#FF9500"],
+      ["cat_invest", "Инвестиции/Капитал", "📈", "#007AFF"],
+      ["cat_leisure_cafe", "Нямки+Отдых+Покупки", "☕", "#5856D6"],
+      ["cat_pharmacy", "Аптека/Лекарства", "💊", "#AF52DE"],
+      ["cat_groceries_chem", "Продукты+БХим", "🛒", "#FF2D55"],
+      ["cat_transport_comm", "Транспорт+Связь+Свет", "🚗", "#FFCC00"],
+      ["cat_other", "Разное", "📦", "#8E8E93"]
+    ];
+    sheet.getRange(2, 1, defaultCats.length, 4).setValues(defaultCats);
+  }
+  return sheet;
 }
 
 function doGet(e) {
   try {
-    var sheet = getSheet();
-    var rows = sheet.getDataRange().getValues();
-    if (rows.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify({ status: "ok", transactions: [] }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
+    var ss = getSpreadsheet();
+    var txSheet = getTxSheet(ss);
+    var catSheet = getCatSheet(ss);
+
+    // 1. Читаем расходы
+    var rows = txSheet.getDataRange().getValues();
     var transactions = [];
-    for (var i = 1; i < rows.length; i++) {
-      var r = rows[i];
-      if (!r[0]) continue;
-      transactions.push({
-        id: String(r[0]),
-        categoryId: String(r[3] || 'cat_other'),
-        amount: Number(r[4] || 0),
-        description: String(r[5] || ''),
-        timestamp: Number(r[6] || 0)
-      });
+    if (rows.length > 1) {
+      for (var i = 1; i < rows.length; i++) {
+        var r = rows[i];
+        if (!r[0]) continue;
+        transactions.push({
+          id: String(r[0]),
+          categoryId: String(r[3] || 'cat_other'),
+          amount: Number(r[4] || 0),
+          description: String(r[5] || ''),
+          timestamp: Number(r[6] || 0)
+        });
+      }
     }
-    return ContentService.createTextOutput(JSON.stringify({ status: "ok", transactions: transactions }))
-      .setMimeType(ContentService.MimeType.JSON);
+
+    // 2. Читаем категории
+    var catRows = catSheet.getDataRange().getValues();
+    var categories = [];
+    if (catRows.length > 1) {
+      for (var j = 1; j < catRows.length; j++) {
+        var cr = catRows[j];
+        if (!cr[0]) continue;
+        categories.push({
+          id: String(cr[0]),
+          name: String(cr[1] || ''),
+          icon: String(cr[2] || '📦'),
+          color: String(cr[3] || '#8E8E93')
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "ok",
+      transactions: transactions,
+      categories: categories
+    })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1840,13 +1897,31 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    var sheet = getSheet();
+    var ss = getSpreadsheet();
+    var txSheet = getTxSheet(ss);
     var body = JSON.parse(e.postData.contents);
 
+    // 1. Синхронизация категорий
+    if (body.action === 'sync_categories') {
+      var catSheet = getCatSheet(ss);
+      if (body.categories && body.categories.length > 0) {
+        catSheet.clear();
+        catSheet.appendRow(["ID", "Название", "Иконка", "Цвет"]);
+        catSheet.getRange(1, 1, 1, 4).setFontWeight("bold");
+        var cRows = body.categories.map(function(c) {
+          return [c.id, c.name, c.icon, c.color];
+        });
+        catSheet.getRange(2, 1, cRows.length, 4).setValues(cRows);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "ok", count: body.categories.length }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 2. Синхронизация всех расходов
     if (body.action === 'sync_all') {
-      sheet.clear();
-      sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма (₽)", "Описание", "Timestamp"]);
-      sheet.getRange(1, 1, 1, 7).setFontWeight("bold");
+      txSheet.clear();
+      txSheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма (₽)", "Описание", "Timestamp"]);
+      txSheet.getRange(1, 1, 1, 7).setFontWeight("bold");
       if (body.transactions && body.transactions.length > 0) {
         var dataRows = body.transactions.map(function(tx) {
           var d = new Date(tx.timestamp || Date.now());
@@ -1854,20 +1929,33 @@ function doPost(e) {
           var timeStr = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
           return [tx.id, dateStr, timeStr, tx.categoryId, tx.amount, tx.description, tx.timestamp];
         });
-        sheet.getRange(2, 1, dataRows.length, 7).setValues(dataRows);
+        txSheet.getRange(2, 1, dataRows.length, 7).setValues(dataRows);
       }
+
+      // Если в запросе переданы категории, обновляем и лист Категории
+      if (body.categories && body.categories.length > 0) {
+        var catSheet2 = getCatSheet(ss);
+        catSheet2.clear();
+        catSheet2.appendRow(["ID", "Название", "Иконка", "Цвет"]);
+        catSheet2.getRange(1, 1, 1, 4).setFontWeight("bold");
+        var cRows2 = body.categories.map(function(c) {
+          return [c.id, c.name, c.icon, c.color];
+        });
+        catSheet2.getRange(2, 1, cRows2.length, 4).setValues(cRows2);
+      }
+
       return ContentService.createTextOutput(JSON.stringify({ status: "ok", count: (body.transactions ? body.transactions.length : 0) }))
         .setMimeType(ContentService.MimeType.JSON);
     } else if (body.action === 'add') {
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма (₽)", "Описание", "Timestamp"]);
-        sheet.getRange(1, 1, 1, 7).setFontWeight("bold");
+      if (txSheet.getLastRow() === 0) {
+        txSheet.appendRow(["ID", "Дата", "Время", "Категория", "Сумма (₽)", "Описание", "Timestamp"]);
+        txSheet.getRange(1, 1, 1, 7).setFontWeight("bold");
       }
       var tx = body.transaction;
       var d = new Date(tx.timestamp || Date.now());
       var dateStr = (d.getDate() < 10 ? '0' : '') + d.getDate() + '.' + ((d.getMonth() + 1) < 10 ? '0' : '') + (d.getMonth() + 1) + '.' + d.getFullYear();
       var timeStr = (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
-      sheet.appendRow([tx.id, dateStr, timeStr, tx.categoryId, tx.amount, tx.description, tx.timestamp]);
+      txSheet.appendRow([tx.id, dateStr, timeStr, tx.categoryId, tx.amount, tx.description, tx.timestamp]);
       return ContentService.createTextOutput(JSON.stringify({ status: "ok" }))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -2006,7 +2094,8 @@ function doPost(e) {
         updateGSyncStatusBadge('syncing', 'Отправка в Google Таблицу...');
         const payload = {
           action: 'sync_all',
-          transactions: state.transactions
+          transactions: state.transactions,
+          categories: state.categories
         };
         const res = await fetch(gConfig.url, {
           method: 'POST',
@@ -2069,18 +2158,33 @@ function doPost(e) {
           throw new Error('Ошибка парсинга ответа Google Таблицы');
         }
 
-        if (json.status === 'ok' && Array.isArray(json.transactions)) {
-          const currentStr = JSON.stringify(state.transactions);
-          const incomingStr = JSON.stringify(json.transactions);
-          if (currentStr !== incomingStr) {
-            state.transactions = json.transactions;
-            saveTransactions(true); // Сохраняем локально, но не отправляем повторно назад
+        if (json.status === 'ok') {
+          // 1. Синхронизируем категории из Google Таблицы (если есть лист Категории)
+          if (Array.isArray(json.categories) && json.categories.length === 8) {
+            const currentCatStr = JSON.stringify(state.categories);
+            const incomingCatStr = JSON.stringify(json.categories);
+            if (currentCatStr !== incomingCatStr) {
+              state.categories = json.categories;
+              localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
+            }
           }
+
+          // 2. Синхронизируем расходы
+          if (Array.isArray(json.transactions)) {
+            const currentStr = JSON.stringify(state.transactions);
+            const incomingStr = JSON.stringify(json.transactions);
+            if (currentStr !== incomingStr) {
+              state.transactions = json.transactions;
+              saveTransactions(true);
+            }
+          }
+
+          render();
           gConfig.lastSync = Date.now();
           localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
           updateGSyncStatusBadge('connected', 'Синхронизировано: ' + formatDate(gConfig.lastSync));
           if (!isSilent) {
-            alert('Синхронизация успешна! В таблице расходов: ' + state.transactions.length);
+            alert('Синхронизация успешна!\nВ таблице расходов: ' + state.transactions.length + (json.categories ? '\nКатегорий: ' + json.categories.length : ''));
           }
         } else {
           throw new Error(json.error || 'В таблице нет данных или скрипт вернул ошибку');
@@ -2966,6 +3070,7 @@ function doPost(e) {
       if (confirm('Сбросить все 8 категорий к первоначальным названиям и цветам?')) {
         state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         saveCategories();
+        syncPushCategoriesToGoogle();
         openCategorySettings();
       }
     }
