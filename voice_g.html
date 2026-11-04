@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest_g.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>Voice costs G v4.0.2 — Голосовой учёт расходов (Google Sheets Sync)</title>
+  <title>Voice costs G v4.0.3 — Голосовой учёт расходов (Google Sheets Sync)</title>
 
   <style>
     :root {
@@ -451,12 +451,12 @@
       opacity: 0.85;
     }
 
-    /* Confirmation Banner (Dynamic Island: Waits for OK or Cancel) */
+        /* Confirmation Banner (Bottom Floating Card: Waits for OK or Cancel) */
     .dynamic-island {
       position: fixed;
-      top: calc(env(safe-area-inset-top, 12px) + 8px);
+      bottom: calc(env(safe-area-inset-bottom, 16px) + 12px);
       left: 50%;
-      transform: translateX(-50%) translateY(-150px) scale(0.9);
+      transform: translateX(-50%) translateY(140%) scale(0.92);
       width: calc(100% - 24px);
       max-width: 420px;
       background: var(--island-bg);
@@ -466,14 +466,14 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
-      z-index: 999;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+      z-index: 1000;
       transition: transform 0.35s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.25s ease;
       opacity: 0;
       pointer-events: none;
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.20);
     }
 
     .dynamic-island.visible {
@@ -1196,7 +1196,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice costs G</h1>
-          <span class="app-version-badge">v4.0.2</span>
+          <span class="app-version-badge">v4.0.3</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -1541,20 +1541,40 @@
     const STORAGE_KEY_THEME = 'voice_expense_theme_v1';
 
     const DEFAULT_CATEGORIES = [
-      { id: 'cat_groceries', name: 'Продукты', icon: '🛒', color: '#34C759' },
-      { id: 'cat_cafe',      name: 'Кафе',     icon: '☕', color: '#FF9500' },
-      { id: 'cat_transport', name: 'Транспорт',icon: '🚕', color: '#007AFF' },
-      { id: 'cat_home',      name: 'Дом',      icon: '🏠', color: '#5856D6' },
-      { id: 'cat_shopping',  name: 'Покупки',  icon: '🛍️', color: '#AF52DE' },
-      { id: 'cat_health',    name: 'Здоровье', icon: '💊', color: '#FF2D55' },
-      { id: 'cat_leisure',   name: 'Досуг',    icon: '🍿', color: '#FFCC00' },
-      { id: 'cat_other',     name: 'Разное',   icon: '📦', color: '#8E8E93' }
+      { id: 'cat_loans',          name: 'Займы/Кредиты',          icon: '💳', color: '#34C759' },
+      { id: 'cat_repair',         name: 'Дом/Ремонт',             icon: '🛠️', color: '#FF9500' },
+      { id: 'cat_invest',         name: 'Инвестиции/Капитал',     icon: '📈', color: '#007AFF' },
+      { id: 'cat_leisure_cafe',   name: 'Отдых+Кафе+Покупки',     icon: '☕', color: '#5856D6' },
+      { id: 'cat_pharmacy',       name: 'Аптека/Лекарства',       icon: '💊', color: '#AF52DE' },
+      { id: 'cat_groceries_chem', name: 'Продукты+БХим',          icon: '🛒', color: '#FF2D55' },
+      { id: 'cat_transport_comm', name: 'Транспорт+Связь+Свет',   icon: '🚗', color: '#FFCC00' },
+      { id: 'cat_other',          name: 'Разное',                 icon: '📦', color: '#8E8E93' }
     ];
 
+    const LEGACY_CAT_MAP = {
+      'cat_groceries': 'cat_groceries_chem',
+      'cat_cafe': 'cat_leisure_cafe',
+      'cat_transport': 'cat_transport_comm',
+      'cat_home': 'cat_repair',
+      'cat_shopping': 'cat_leisure_cafe',
+      'cat_health': 'cat_pharmacy',
+      'cat_leisure': 'cat_leisure_cafe',
+      'cat_other': 'cat_other'
+    };
+
+    function getCategoryById(catId) {
+      if (!catId) return state.categories[7] || DEFAULT_CATEGORIES[7];
+      let cat = state.categories.find(c => c.id === catId);
+      if (!cat && LEGACY_CAT_MAP[catId]) {
+        cat = state.categories.find(c => c.id === LEGACY_CAT_MAP[catId]);
+      }
+      return cat || { id: 'cat_other', name: 'Разное', icon: '📦', color: '#8E8E93' };
+    }
+
     const DEMO_TRANSACTIONS = [
-      { id: 'tx_1', categoryId: 'cat_groceries', amount: 430, description: 'Хлеб, сыр, молоко', timestamp: Date.now() - 1000 * 60 * 45 },
-      { id: 'tx_2', categoryId: 'cat_cafe',      amount: 250, description: 'Капучино и круассан', timestamp: Date.now() - 1000 * 60 * 120 },
-      { id: 'tx_3', categoryId: 'cat_transport', amount: 380, description: 'Такси в офис', timestamp: Date.now() - 1000 * 60 * 360 }
+      { id: 'tx_1', categoryId: 'cat_groceries_chem', amount: 430, description: 'Хлеб, сыр, порошок', timestamp: Date.now() - 1000 * 60 * 45 },
+      { id: 'tx_2', categoryId: 'cat_leisure_cafe',   amount: 250, description: 'Капучино и круассан', timestamp: Date.now() - 1000 * 60 * 120 },
+      { id: 'tx_3', categoryId: 'cat_transport_comm', amount: 380, description: 'Такси и интернет',   timestamp: Date.now() - 1000 * 60 * 360 }
     ];
 
     let state = {
@@ -1726,20 +1746,27 @@
     function loadData() {
       try {
         const storedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES);
-        state.categories = storedCats ? JSON.parse(storedCats) : [...DEFAULT_CATEGORIES];
+        const catVer = localStorage.getItem('voice_g_cat_ver');
+        // Автоматическая миграция на категории 4.0.3 при первом запуске
+        if (catVer !== '4.0.3') {
+          state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+          localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
+          localStorage.setItem('voice_g_cat_ver', '4.0.3');
+        } else {
+          state.categories = storedCats ? JSON.parse(storedCats) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        }
 
         const storedTxs = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
         state.transactions = storedTxs ? JSON.parse(storedTxs) : [...DEMO_TRANSACTIONS];
       } catch (e) {
         console.error('Error loading data:', e);
-        state.categories = [...DEFAULT_CATEGORIES];
+        state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         state.transactions = [...DEMO_TRANSACTIONS];
       }
     }
 
-    
     /* ==========================================================================
-       GOOGLE SHEETS SYNC ENGINE (Voice costs G v4.0.1)
+       GOOGLE SHEETS SYNC ENGINE (Voice costs G v4.0.3)
        ========================================================================== */
     const STORAGE_KEY_G_URL = 'voice_g_script_url';
     const STORAGE_KEY_G_AUTOSYNC = 'voice_g_autosync';
@@ -2242,7 +2269,7 @@ function doPost(e) {
 
       const cleanedTranscript = cleanRecognizedText(rawTranscript);
       const parsed = parseVoiceExpense(cleanedTranscript);
-      const cat = state.categories.find(c => c.id === targetCatId);
+      const cat = getCategoryById(targetCatId);
 
       if (parsed.amount <= 0) {
         openAddEditModal(null, targetCatId, parsed.description || '');
@@ -2656,7 +2683,7 @@ function doPost(e) {
       } else {
         const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
         sorted.forEach(tx => {
-          const cat = state.categories.find(c => c.id === tx.categoryId) || { name: 'Другое', icon: '📦', color: '#8E8E93' };
+          const cat = getCategoryById(tx.categoryId);
           const item = document.createElement('div');
           item.className = 'history-item';
           item.innerHTML = `
@@ -2889,7 +2916,7 @@ function doPost(e) {
         const row = document.createElement('div');
         row.className = 'cat-setting-row';
         row.innerHTML = `
-          <input type="text" class="cat-setting-emoji" value="${cat.icon}" maxlength="2" data-idx="${index}">
+          <input type="text" class="cat-setting-emoji" value="${cat.icon}" maxlength="4" data-idx="${index}">
           <input type="text" class="cat-setting-name" value="${cat.name}" maxlength="20" data-idx="${index}">
           <input type="color" class="cat-setting-color" value="${cat.color}" data-idx="${index}">
         `;
