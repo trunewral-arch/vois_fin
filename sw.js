@@ -1,5 +1,5 @@
 // Minimal Service Worker for PWA installability and offline support
-const CACHE_NAME = 'voice-app-v4.3';
+const CACHE_NAME = 'voice-app-v4.4';
 const ASSETS = [
   './',
   './index.html',

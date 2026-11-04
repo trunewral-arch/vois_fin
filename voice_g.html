@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest_g.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>Voice costs G v4.0.3 — Голосовой учёт расходов (Google Sheets Sync)</title>
+  <title>Voice costs G v4.0.4 — Голосовой учёт расходов (Google Sheets Sync)</title>
 
   <style>
     :root {
@@ -451,29 +451,28 @@
       opacity: 0.85;
     }
 
-        /* Confirmation Banner (Bottom Floating Card: Waits for OK or Cancel) */
+        /* Confirmation Banner (Enlarged 1.5x Bottom Floating Card) */
     .dynamic-island {
       position: fixed;
       bottom: calc(env(safe-area-inset-bottom, 16px) + 12px);
       left: 50%;
       transform: translateX(-50%) translateY(140%) scale(0.92);
-      width: calc(100% - 24px);
-      max-width: 420px;
-      background: var(--island-bg);
+      width: calc(100% - 20px);
+      max-width: 440px;
+      background: rgba(28, 28, 30, 0.96);
       color: var(--island-text);
-      border-radius: 26px;
-      padding: 14px 18px;
+      border-radius: 28px;
+      padding: 18px 20px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+      gap: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.22);
       z-index: 1000;
       transition: transform 0.35s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.25s ease;
       opacity: 0;
       pointer-events: none;
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255, 255, 255, 0.20);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
     }
 
     .dynamic-island.visible {
@@ -486,101 +485,122 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
     }
 
     .island-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
       min-width: 0;
+      flex: 1;
     }
 
     .island-icon {
-      font-size: 26px;
+      font-size: 38px;
+      line-height: 1;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .island-details {
       display: flex;
       flex-direction: column;
       min-width: 0;
+      gap: 2px;
     }
 
     .island-category {
-      font-size: 11px;
+      font-size: 12px;
       text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: var(--text-tertiary);
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      color: #FF9F0A;
+      line-height: 1.2;
     }
 
     .island-desc {
-      font-size: 15px;
-      font-weight: 600;
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFFFFF;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      line-height: 1.25;
     }
 
     .island-raw {
-      font-size: 11px;
-      color: var(--text-secondary);
+      font-size: 13px;
+      color: #AEAEB2;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-top: 1px;
+      margin-top: 2px;
+      line-height: 1.2;
     }
 
     .island-amount {
-      font-size: 20px;
+      font-size: 30px;
       font-weight: 800;
-      color: #34C759;
+      color: #30D158;
+      text-shadow: 0 0 20px rgba(48, 209, 88, 0.35);
+      letter-spacing: -0.5px;
       flex-shrink: 0;
+      text-align: right;
     }
 
     .island-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .island-btn {
       flex: 1;
-      padding: 9px 0;
-      border-radius: 14px;
-      font-size: 13px;
+      height: 52px;
+      padding: 0 12px;
+      border-radius: 16px;
+      font-size: 16px;
       font-weight: 700;
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 6px;
       transition: opacity 0.15s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
 
     .island-btn:active {
       transform: scale(0.96);
-      opacity: 0.8;
+      opacity: 0.85;
     }
 
     .island-btn-cancel {
-      background: rgba(255, 59, 48, 0.22);
+      background: rgba(255, 69, 58, 0.22);
       color: #FF453A;
+      border: 1px solid rgba(255, 69, 58, 0.35);
+      font-size: 15px;
     }
 
     .island-btn-edit {
-      background: rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.18);
       color: #FFFFFF;
-      flex: 0 0 42px;
-      font-size: 16px;
+      flex: 0 0 54px;
+      font-size: 22px;
     }
 
     .island-btn-ok {
-      background: #34C759;
+      background: #30D158;
       color: #FFFFFF;
-      flex: 1.4;
+      flex: 1.5;
+      font-size: 18px;
+      font-weight: 800;
+      box-shadow: 0 4px 18px rgba(48, 209, 88, 0.45);
     }
 
     /* Live Recording Overlay (Pulses while speaking) */
@@ -1196,7 +1216,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice costs G</h1>
-          <span class="app-version-badge">v4.0.3</span>
+          <span class="app-version-badge">v4.0.4</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -1214,7 +1234,7 @@
 
       <!-- Balance Card -->
       <div class="balance-card">
-        <div id="balanceLabel" class="balance-label">Расходы за сегодня</div>
+        <div id="balanceLabel" class="balance-label">Расходы за месяц</div>
         <div class="balance-amount">
           <span id="totalBalanceAmount">0</span>
           <span class="currency-symbol">₽</span>
@@ -1223,9 +1243,9 @@
 
       <!-- Period Filter Segmented Control -->
       <div class="period-segmented">
-        <button class="period-btn active" data-period="today">Сегодня</button>
+        <button class="period-btn active" data-period="month">Месяц</button>
         <button class="period-btn" data-period="week">Неделя</button>
-        <button class="period-btn" data-period="month">Месяц</button>
+        <button class="period-btn" data-period="today">Сегодня</button>
         <button class="period-btn" data-period="all">Всё время</button>
       </div>
 
@@ -1580,7 +1600,7 @@
     let state = {
       categories: [],
       transactions: [],
-      currentPeriod: 'today',
+      currentPeriod: 'month',
       selectedModalCategoryId: null,
       selectedSimCategoryId: null,
       pendingIslandTransaction: null
@@ -2488,7 +2508,8 @@ function doPost(e) {
 
       iconEl.textContent = category.icon;
       catEl.textContent = category.name;
-      descEl.textContent = tx.description;
+      catEl.style.color = category.color || "#FF9F0A";
+      descEl.textContent = tx.description || category.name;
       amountEl.textContent = `+${tx.amount.toLocaleString('ru-RU')} ₽`;
       rawEl.textContent = rawPhrase ? `Сказано: «${rawPhrase}»` : '';
 
