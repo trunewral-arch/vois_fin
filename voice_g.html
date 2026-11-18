@@ -1811,6 +1811,36 @@
       lastSync: Number(localStorage.getItem(STORAGE_KEY_G_LAST_SYNC) || 0)
     };
 
+    // Автоматическое подключение через параметры ссылки (?token=..., ?url=..., ?sync=... или #token=...)
+    (function checkUrlParamsForGoogleSync() {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const raw = searchParams.get('token') || searchParams.get('url') || searchParams.get('sync') || searchParams.get('g') ||
+                    hashParams.get('token') || hashParams.get('url') || hashParams.get('sync') || hashParams.get('g');
+
+        if (raw) {
+          let targetUrl = decodeURIComponent(raw).trim();
+          // Если передан только токен развертывания (ID скрипта)
+          if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+            targetUrl = 'https://script.google.com/macros/s/' + targetUrl + '/exec';
+          }
+          if (targetUrl.includes('script.google.com')) {
+            gConfig.url = targetUrl;
+            gConfig.autoSync = true;
+            localStorage.setItem(STORAGE_KEY_G_URL, gConfig.url);
+            localStorage.setItem(STORAGE_KEY_G_AUTOSYNC, 'true');
+            // Очищаем параметры из адресной строки для красивого добавления на домашний экран
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(null, '', window.location.pathname);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('URL sync param parse error:', err);
+      }
+    })();
+
     const GOOGLE_APPS_SCRIPT_TEMPLATE = `// Google Apps Script для Voice costs G (Синхронизация расходов и категорий)
 // Вставьте этот код в: Меню таблицы -> Расширения -> Apps Script
 
