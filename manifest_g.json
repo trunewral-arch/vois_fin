@@ -1,6 +1,6 @@
 {
-  "name": "Voice costs G",
-  "short_name": "VoiceCostsG",
+  "name": "Cost",
+  "short_name": "Cost",
   "description": "Голосовой учёт расходов с синхронизацией в Google Таблицы v4",
   "start_url": "./voice_g.html",
   "scope": "./",
