@@ -1,5 +1,5 @@
 // Minimal Service Worker for PWA installability and offline support
-const CACHE_NAME = 'voice-app-v4.6';
+const CACHE_NAME = 'voice-app-v4.7';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,12 @@ const ASSETS = [
   './manifest_pt.json',
   './manifest_g.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon-maskable-512.png',
+  './apple-touch-icon.png',
+  './favicon.ico',
+  './favicon-32x32.png',
+  './favicon-16x16.png'
 ];
 
 self.addEventListener('install', (event) => {
