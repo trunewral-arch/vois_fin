@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <title>Cost v4.0.7 — Голосовой учёт расходов (Google Sheets Sync)</title>
+  <title>Cost v4.0.8 — Голосовой учёт расходов (Google Sheets Sync)</title>
 
   <style>
     :root {
@@ -1221,7 +1221,7 @@
         <div class="app-title-group">
           <span class="app-logo">🎙️</span>
           <h1 class="app-title">Voice costs G</h1>
-          <span class="app-version-badge">v4.0.7</span>
+          <span class="app-version-badge">v4.0.8</span>
         </div>
         <div class="top-actions">
           <a href="index.html" class="version-switch-link" title="Перейти на v1.2">v1.2</a>
@@ -1682,7 +1682,9 @@
       }
 
       let text = rawText.trim().toLowerCase();
-      text = text.replace(/[,;]/g, ' ')
+      // Preserve decimal comma between digits (e.g. "250,50" -> "250.50") before stripping punctuation
+      text = text.replace(/(\d),(\d{1,2})(?=\D|$)/g, '$1.$2')
+                 .replace(/[,;]/g, ' ')
                  .replace(/[₽]/g, ' руб ')
                  .replace(/\s+/g, ' ')
                  .trim();
@@ -1690,32 +1692,65 @@
       let extractedAmount = 0;
       let remainingText = text;
 
-      // 1. Check for numbers with thousands formatting: e.g. "3.700", "25.000", "3 700", "1.500.000"
-      const thousandsRegex = /\b(\d{1,3}(?:[.\s]\d{3})+)(?:[.,](\d{1,2}))?\b/;
-      const thMatch = text.match(thousandsRegex);
+      // 1 & 2. Collect all digit candidates (thousands-formatted like "3.700", "3 700" or regular/decimal like "450.50")
+      const candidates = [];
+      const numRegex = /(^|\s)(\d{1,3}(?:[.\s]\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?=\s|$|[.!?;:()"])/g;
+      let m;
+      while ((m = numRegex.exec(text)) !== null) {
+        const leadingSpace = m[1].length;
+        const rawNum = m[2];
+        const startIdx = m.index + leadingSpace;
+        const endIdx = startIdx + rawNum.length;
 
-      if (thMatch) {
-        const wholeStr = thMatch[1].replace(/[.\s]/g, '');
-        const decStr = thMatch[2] ? '.' + thMatch[2] : '';
-        const parsedNum = parseFloat(wholeStr + decStr);
-        if (!isNaN(parsedNum) && parsedNum > 0) {
-          extractedAmount = parsedNum;
-          remainingText = text.replace(thMatch[0], ' ');
+        let normalized;
+        if (/^\d{1,3}(?:[.\s]\d{3})+(?:\.\d{1,2})?$/.test(rawNum)) {
+          const decMatch = rawNum.match(/^(.*?)(\.\d{1,2})$/);
+          if (decMatch && !/^\.\d{3}$/.test(decMatch[2])) {
+            normalized = decMatch[1].replace(/[.\s]/g, '') + decMatch[2];
+          } else {
+            normalized = rawNum.replace(/[.\s]/g, '');
+          }
+        } else {
+          normalized = rawNum;
+        }
+
+        const val = parseFloat(normalized);
+        if (!isNaN(val) && val > 0) {
+          candidates.push({ value: val, start: startIdx, end: endIdx, raw: rawNum });
         }
       }
 
-      // 2. Normal digit match (single number or decimal with 1-2 kopeck digits): e.g. "430", "450.50", "250,5"
-      if (!extractedAmount) {
-        const digitRegex = /\b(\d+(?:[.,]\d{1,2})?)\b/;
-        const digitMatch = text.match(digitRegex);
-        if (digitMatch) {
-          const numStr = digitMatch[1].replace(',', '.');
-          const parsedNum = parseFloat(numStr);
-          if (!isNaN(parsedNum) && parsedNum > 0) {
-            extractedAmount = parsedNum;
-            remainingText = text.replace(digitRegex, ' ');
+      if (candidates.length === 1) {
+        const only = candidates[0];
+        extractedAmount = only.value;
+        remainingText = (text.slice(0, only.start) + ' ' + text.slice(only.end)).trim();
+      } else if (candidates.length > 1) {
+        const currencyRe = /^(рублей|рубля|рубль|руб|р|₽)(\s|$|[.!?;:()"])/i;
+        const pricePrepRe = /(^|\s)(за|на сумму|стоимостью|по цене|в размере)$/i;
+        const unitRe = /^(шт|штук|штуки|штука|штучек|пачк[аиеу]?|пачек|литр(?:а|ов)?|л|кг|килограмм(?:а|ов)?|г|гр|грамм(?:а|ов)?|м|метр(?:а|ов)?|см|мм|пар[аы]?|уп|упаковк[аи]|бутыл(?:ка|ки|ок)|бан(?:ка|ки|ок)|рулон(?:а|ов)?|коробок|коробки)(\s|$|[.!?;:()"])/i;
+
+        let bestCand = candidates[candidates.length - 1];
+        let bestScore = -Infinity;
+
+        candidates.forEach((cand, idx) => {
+          let score = 0;
+          const before = text.slice(0, cand.start).trim();
+          const after = text.slice(cand.end).trim();
+
+          if (currencyRe.test(after)) score += 100;
+          if (pricePrepRe.test(before)) score += 50;
+          if (unitRe.test(after)) score -= 100;
+          if (idx === candidates.length - 1) score += 20;
+          if (cand.value >= 10) score += 10;
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestCand = cand;
           }
-        }
+        });
+
+        extractedAmount = bestCand.value;
+        remainingText = (text.slice(0, bestCand.start) + ' ' + text.slice(bestCand.end)).trim();
       }
 
       // 3. Number words (e.g. "три тысячи семьсот", "двести", "косарь")
@@ -1820,7 +1855,7 @@
                     hashParams.get('token') || hashParams.get('url') || hashParams.get('sync') || hashParams.get('g');
 
         if (raw) {
-          let targetUrl = decodeURIComponent(raw).trim();
+          let targetUrl = raw.trim();
           // Если передан только токен развертывания (ID скрипта)
           if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
             targetUrl = 'https://script.google.com/macros/s/' + targetUrl + '/exec';
@@ -2123,25 +2158,132 @@ function doPost(e) {
     // Состояния для исключения гонки запросов (Race Condition)
     let isSyncPulling = false;
     let isSyncPushing = false;
+    let pendingPushQueued = false; // Очередь повторной отправки, если во время push добавили ещё трату
     let lastLocalMutationTime = 0; // Время последнего локального добавления/изменения/удаления
     const pendingUnpushedTxIds = new Set(); // ID транзакций, добавленных локально и ещё не выгруженных
+    const pendingUpdatedTxIds = new Set();  // ID транзакций, отредактированных локально и ещё не выгруженных
     const pendingDeletedTxIds = new Set();  // ID транзакций, удалённых локально и ещё не удалённых в Google
     let autoSyncDebounceTimer = null;
+
+    async function syncPushCategoriesToGoogle(isSilent = true) {
+      if (!gConfig.url) return;
+      try {
+        updateGSyncStatusBadge('syncing', 'Сохранение категорий в Google...');
+        const res = await fetch(gConfig.url, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'sync_categories',
+            categories: [...state.categories]
+          })
+        });
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch (pe) {
+          throw new Error('Ошибка ответа сервера Google при сохранении категорий');
+        }
+        if (json.status === 'ok') {
+          gConfig.lastSync = Date.now();
+          localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
+          updateGSyncStatusBadge('connected', 'Категории сохранены: ' + formatDate(gConfig.lastSync));
+        } else {
+          throw new Error(json.error || 'Ошибка сохранения категорий');
+        }
+      } catch (err) {
+        updateGSyncStatusBadge('error', 'Ошибка категорий: ' + err.message);
+        if (!isSilent) {
+          alert('Не удалось сохранить категории в Google:\n' + err.message);
+        }
+      }
+    }
+
+    function mergeTransactionsWithServer(localTxs, serverTxs, unpushedIds, updatedIds, deletedIds) {
+      const localMap = new Map(localTxs.map(t => [t.id, t]));
+      const merged = [];
+      const seenIds = new Set();
+
+      // 1. Сначала добавляем новые локальные траты, которых ещё нет на сервере
+      localTxs.forEach(tx => {
+        if (unpushedIds.has(tx.id) && !deletedIds.has(tx.id) && !seenIds.has(tx.id)) {
+          merged.push(tx);
+          seenIds.add(tx.id);
+        }
+      });
+
+      // 2. Затем берём серверные траты (включая добавленные из Telegram-бота или другого устройства)
+      serverTxs.forEach(sTx => {
+        if (!sTx || !sTx.id) return;
+        if (deletedIds.has(sTx.id) || seenIds.has(sTx.id)) return;
+        // Если запись была локально отредактирована — приоритет у локальной правки
+        if (updatedIds.has(sTx.id) && localMap.has(sTx.id)) {
+          merged.push(localMap.get(sTx.id));
+        } else {
+          merged.push(sTx);
+        }
+        seenIds.add(sTx.id);
+      });
+
+      return merged;
+    }
 
     async function syncPushToGoogle(isSilent = false) {
       if (!gConfig.url) {
         if (!isSilent) alert('Сначала вставьте URL Google Apps Script в поле выше!');
         return;
       }
-      if (isSyncPushing) return; // Защита от одновременных push-запросов
+      if (isSyncPushing) {
+        // Не теряем быструю повторную трату: ставим в очередь на отправку сразу после текущей
+        pendingPushQueued = true;
+        return;
+      }
       isSyncPushing = true;
       try {
         updateGSyncStatusBadge('syncing', 'Отправка в Google Таблицу...');
-        const txsSnapshot = [...state.transactions];
+
+        // Снимки очередей на момент старта, чтобы не затереть новые мутации, сделанные во время fetch
+        const unpushedSnap = new Set(pendingUnpushedTxIds);
+        const updatedSnap = new Set(pendingUpdatedTxIds);
+        const deletedSnap = new Set(pendingDeletedTxIds);
+
+        let txsToPush = [...state.transactions];
+
+        // При автосинхронизации сначала безопасно подтягиваем свежий список с сервера,
+        // чтобы не затереть траты, добавленные через Telegram-бота или другое устройство
+        if (isSilent) {
+          try {
+            const preRes = await fetch(gConfig.url, {
+              method: 'GET',
+              redirect: 'follow',
+              cache: 'no-cache'
+            });
+            const preText = await preRes.text();
+            const preJson = JSON.parse(preText);
+            if (preJson && preJson.status === 'ok' && Array.isArray(preJson.transactions)) {
+              txsToPush = mergeTransactionsWithServer(
+                state.transactions,
+                preJson.transactions,
+                unpushedSnap,
+                updatedSnap,
+                deletedSnap
+              );
+              if (JSON.stringify(state.transactions) !== JSON.stringify(txsToPush)) {
+                state.transactions = txsToPush;
+                localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(state.transactions));
+                render();
+              }
+            }
+          } catch (preErr) {
+            console.warn('Предварительное слияние перед push пропущено:', preErr);
+          }
+        }
+
         const catsSnapshot = [...state.categories];
         const payload = {
           action: 'sync_all',
-          transactions: txsSnapshot,
+          transactions: txsToPush,
           categories: catsSnapshot
         };
         const res = await fetch(gConfig.url, {
@@ -2162,9 +2304,10 @@ function doPost(e) {
         }
 
         if (json.status === 'ok') {
-          // Успешно выгружено в Google Таблицу: подтверждаем и снимаем флаги очереди
-          txsSnapshot.forEach(tx => pendingUnpushedTxIds.delete(tx.id));
-          pendingDeletedTxIds.clear();
+          // Снимаем флаги ТОЛЬКО для тех ID, которые реально вошли в этот снимок отправки
+          unpushedSnap.forEach(id => pendingUnpushedTxIds.delete(id));
+          updatedSnap.forEach(id => pendingUpdatedTxIds.delete(id));
+          deletedSnap.forEach(id => pendingDeletedTxIds.delete(id));
 
           gConfig.lastSync = Date.now();
           localStorage.setItem(STORAGE_KEY_G_LAST_SYNC, String(gConfig.lastSync));
@@ -2182,6 +2325,10 @@ function doPost(e) {
         }
       } finally {
         isSyncPushing = false;
+        if (pendingPushQueued) {
+          pendingPushQueued = false;
+          setTimeout(() => syncPushToGoogle(true), 200);
+        }
       }
     }
 
@@ -2246,17 +2393,15 @@ function doPost(e) {
             }
           }
 
-          // 2. Синхронизируем расходы с защитой локальных неподтверждённых трат
+          // 2. Синхронизируем расходы с защитой локальных неподтверждённых добавлений, правок и удалений
           if (Array.isArray(json.transactions)) {
-            // Исключаем удалённые локально записи, которые ещё не выгружены в Google
-            const incomingFiltered = json.transactions.filter(t => !pendingDeletedTxIds.has(t.id));
-
-            // Сохраняем локальные траты, которых ещё нет в Google
-            const incomingIds = new Set(incomingFiltered.map(t => t.id));
-            const unpushedLocalTxs = state.transactions.filter(t => pendingUnpushedTxIds.has(t.id) && !incomingIds.has(t.id));
-
-            // Объединяем: неподтверждённые локальные + данные из Google Таблицы
-            const mergedTxs = [...unpushedLocalTxs, ...incomingFiltered];
+            const mergedTxs = mergeTransactionsWithServer(
+              state.transactions,
+              json.transactions,
+              pendingUnpushedTxIds,
+              pendingUpdatedTxIds,
+              pendingDeletedTxIds
+            );
 
             const currentStr = JSON.stringify(state.transactions);
             const mergedStr = JSON.stringify(mergedTxs);
@@ -2817,11 +2962,11 @@ function doPost(e) {
         card.innerHTML = `
           <div class="card-color-stripe"></div>
           <div class="card-top">
-            <div class="category-icon-wrapper">${cat.icon}</div>
+            <div class="category-icon-wrapper">${escapeHtml(cat.icon)}</div>
             <div class="mic-badge">🎙️</div>
           </div>
           <div class="card-bottom">
-            <span class="category-name">${cat.name}</span>
+            <span class="category-name">${escapeHtml(cat.name)}</span>
             <span class="category-amount">${formatCurrency(spent)} ₽</span>
           </div>
         `;
@@ -2874,8 +3019,8 @@ function doPost(e) {
             const leg = document.createElement('div');
             leg.className = 'legend-item';
             leg.innerHTML = `
-              <span class="legend-dot" style="background-color: ${cat.color};"></span>
-              <span>${cat.name} (${percent.toFixed(0)}%)</span>
+              <span class="legend-dot" style="background-color: ${escapeHtml(cat.color)};"></span>
+              <span>${escapeHtml(cat.name)} (${percent.toFixed(0)}%)</span>
             `;
             legend.appendChild(leg);
           }
@@ -2908,11 +3053,11 @@ function doPost(e) {
           item.className = 'history-item';
           item.innerHTML = `
             <div class="item-left">
-              <div class="item-icon" style="color: ${cat.color};">${cat.icon}</div>
+              <div class="item-icon" style="color: ${escapeHtml(cat.color)};">${escapeHtml(cat.icon)}</div>
               <div class="item-info">
                 <span class="item-desc">${escapeHtml(tx.description)}</span>
                 <span class="item-meta">
-                  <span>${cat.name}</span> • <span>${formatDate(tx.timestamp)}</span>
+                  <span>${escapeHtml(cat.name)}</span> • <span>${formatDate(tx.timestamp)}</span>
                 </span>
               </div>
             </div>
@@ -2931,6 +3076,7 @@ function doPost(e) {
                 lastLocalMutationTime = Date.now();
                 pendingDeletedTxIds.add(tx.id);
                 pendingUnpushedTxIds.delete(tx.id);
+                pendingUpdatedTxIds.delete(tx.id);
                 state.transactions = state.transactions.filter(t => t.id !== tx.id);
                 saveTransactions();
                 triggerGAutoSyncIfEnabled(true);
@@ -3034,8 +3180,8 @@ function doPost(e) {
         const pill = document.createElement('div');
         pill.className = `cat-pill ${cat.id === state.selectedModalCategoryId ? 'selected' : ''}`;
         pill.innerHTML = `
-          <span class="cat-pill-icon">${cat.icon}</span>
-          <span class="cat-pill-name">${cat.name}</span>
+          <span class="cat-pill-icon">${escapeHtml(cat.icon)}</span>
+          <span class="cat-pill-name">${escapeHtml(cat.name)}</span>
         `;
         pill.addEventListener('click', () => {
           state.selectedModalCategoryId = cat.id;
@@ -3058,14 +3204,15 @@ function doPost(e) {
       }
 
       lastLocalMutationTime = Date.now();
+      const targetCatName = getCategoryById(state.selectedModalCategoryId).name;
       if (id) {
-        pendingUnpushedTxIds.add(id);
+        pendingUpdatedTxIds.add(id);
         const idx = state.transactions.findIndex(t => t.id === id);
         if (idx !== -1) {
           state.transactions[idx] = {
             ...state.transactions[idx],
             amount,
-            description: desc || state.categories.find(c => c.id === state.selectedModalCategoryId).name,
+            description: desc || targetCatName,
             categoryId: state.selectedModalCategoryId,
             timestamp
           };
@@ -3074,7 +3221,7 @@ function doPost(e) {
         const newTx = {
           id: 'tx_' + Date.now(),
           amount,
-          description: desc || state.categories.find(c => c.id === state.selectedModalCategoryId).name,
+          description: desc || targetCatName,
           categoryId: state.selectedModalCategoryId,
           timestamp
         };
@@ -3093,6 +3240,7 @@ function doPost(e) {
         lastLocalMutationTime = Date.now();
         pendingDeletedTxIds.add(id);
         pendingUnpushedTxIds.delete(id);
+        pendingUpdatedTxIds.delete(id);
         state.transactions = state.transactions.filter(t => t.id !== id);
         saveTransactions();
         triggerGAutoSyncIfEnabled(true);
@@ -3114,8 +3262,8 @@ function doPost(e) {
         const pill = document.createElement('div');
         pill.className = `cat-pill ${cat.id === state.selectedSimCategoryId ? 'selected' : ''}`;
         pill.innerHTML = `
-          <span class="cat-pill-icon">${cat.icon}</span>
-          <span class="cat-pill-name">${cat.name}</span>
+          <span class="cat-pill-icon">${escapeHtml(cat.icon)}</span>
+          <span class="cat-pill-name">${escapeHtml(cat.name)}</span>
         `;
         pill.addEventListener('click', () => {
           state.selectedSimCategoryId = cat.id;
@@ -3148,9 +3296,9 @@ function doPost(e) {
         const row = document.createElement('div');
         row.className = 'cat-setting-row';
         row.innerHTML = `
-          <input type="text" class="cat-setting-emoji" value="${cat.icon}" maxlength="4" data-idx="${index}">
-          <input type="text" class="cat-setting-name" value="${cat.name}" maxlength="20" data-idx="${index}">
-          <input type="color" class="cat-setting-color" value="${cat.color}" data-idx="${index}">
+          <input type="text" class="cat-setting-emoji" value="${escapeHtml(cat.icon)}" maxlength="4" data-idx="${index}">
+          <input type="text" class="cat-setting-name" value="${escapeHtml(cat.name)}" maxlength="20" data-idx="${index}">
+          <input type="color" class="cat-setting-color" value="${escapeHtml(cat.color)}" data-idx="${index}">
         `;
         list.appendChild(row);
       });
@@ -3169,15 +3317,18 @@ function doPost(e) {
         state.categories[i].color = colors[i].value;
       });
 
+      lastLocalMutationTime = Date.now();
       saveCategories();
+      syncPushCategoriesToGoogle(true);
       closeModal('modalSettings');
     }
 
     function resetCategoriesToDefault() {
       if (confirm('Сбросить все 8 категорий к первоначальным названиям и цветам?')) {
+        lastLocalMutationTime = Date.now();
         state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         saveCategories();
-        syncPushCategoriesToGoogle();
+        syncPushCategoriesToGoogle(true);
         openCategorySettings();
       }
     }
@@ -3240,7 +3391,9 @@ function doPost(e) {
         try {
           const data = JSON.parse(e.target.result);
           if (Array.isArray(data.transactions)) {
+            lastLocalMutationTime = Date.now();
             state.transactions = data.transactions;
+            state.transactions.forEach(t => { if (t && t.id) pendingUnpushedTxIds.add(t.id); });
             if (Array.isArray(data.categories) && data.categories.length === 8) {
               state.categories = data.categories;
               localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(state.categories));
@@ -3264,6 +3417,7 @@ function doPost(e) {
         lastLocalMutationTime = Date.now();
         state.transactions.forEach(t => pendingDeletedTxIds.add(t.id));
         pendingUnpushedTxIds.clear();
+        pendingUpdatedTxIds.clear();
         state.transactions = [];
         saveTransactions();
         triggerGAutoSyncIfEnabled(true);

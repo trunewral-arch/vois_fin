@@ -1,4 +1,4 @@
-// Russian Speech Parser for Voice Expense
+// Russian Speech Parser for Voice Expense (v4.0.8)
 function parseVoiceExpense(rawText) {
   if (!rawText || !rawText.trim()) {
     return { amount: 0, description: '', raw: '' };
@@ -6,8 +6,9 @@ function parseVoiceExpense(rawText) {
 
   let text = rawText.trim().toLowerCase();
 
-  // Normalize punctuation and symbols
-  text = text.replace(/[,;]/g, ' ')
+  // Preserve decimal comma between digits (e.g. "250,50" -> "250.50") before stripping punctuation
+  text = text.replace(/(\d),(\d{1,2})(?=\D|$)/g, '$1.$2')
+             .replace(/[,;]/g, ' ')
              .replace(/[₽]/g, ' руб ')
              .replace(/\s+/g, ' ')
              .trim();
@@ -83,32 +84,65 @@ function parseVoiceExpense(rawText) {
   let extractedAmount = 0;
   let remainingText = text;
 
-  // 1. Check for numbers with thousands formatting: e.g. "3.700", "25.000", "3 700", "1.500.000"
-  const thousandsRegex = /\b(\d{1,3}(?:[.\s]\d{3})+)(?:[.,](\d{1,2}))?\b/;
-  const thMatch = text.match(thousandsRegex);
+  // 1 & 2. Collect all digit candidates (thousands-formatted like "3.700", "3 700", or regular/decimal like "450.50")
+  const candidates = [];
+  const numRegex = /(^|\s)(\d{1,3}(?:[.\s]\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?=\s|$|[.!?;:()"])/g;
+  let m;
+  while ((m = numRegex.exec(text)) !== null) {
+    const leadingSpace = m[1].length;
+    const rawNum = m[2];
+    const startIdx = m.index + leadingSpace;
+    const endIdx = startIdx + rawNum.length;
 
-  if (thMatch) {
-    const wholeStr = thMatch[1].replace(/[.\s]/g, '');
-    const decStr = thMatch[2] ? '.' + thMatch[2] : '';
-    const parsedNum = parseFloat(wholeStr + decStr);
-    if (!isNaN(parsedNum) && parsedNum > 0) {
-      extractedAmount = parsedNum;
-      remainingText = text.replace(thMatch[0], ' ');
+    let normalized;
+    if (/^\d{1,3}(?:[.\s]\d{3})+(?:\.\d{1,2})?$/.test(rawNum)) {
+      const decMatch = rawNum.match(/^(.*?)(\.\d{1,2})$/);
+      if (decMatch && !/^\.\d{3}$/.test(decMatch[2])) {
+        normalized = decMatch[1].replace(/[.\s]/g, '') + decMatch[2];
+      } else {
+        normalized = rawNum.replace(/[.\s]/g, '');
+      }
+    } else {
+      normalized = rawNum;
+    }
+
+    const val = parseFloat(normalized);
+    if (!isNaN(val) && val > 0) {
+      candidates.push({ value: val, start: startIdx, end: endIdx, raw: rawNum });
     }
   }
 
-  // 2. Normal digit match (single number or decimal with 1-2 digits): e.g. "430", "450.50", "250,5"
-  if (!extractedAmount) {
-    const digitRegex = /\b(\d+(?:[.,]\d{1,2})?)\b/;
-    const digitMatch = text.match(digitRegex);
-    if (digitMatch) {
-      const numStr = digitMatch[1].replace(',', '.');
-      const parsedNum = parseFloat(numStr);
-      if (!isNaN(parsedNum) && parsedNum > 0) {
-        extractedAmount = parsedNum;
-        remainingText = text.replace(digitRegex, ' ');
+  if (candidates.length === 1) {
+    const only = candidates[0];
+    extractedAmount = only.value;
+    remainingText = (text.slice(0, only.start) + ' ' + text.slice(only.end)).trim();
+  } else if (candidates.length > 1) {
+    const currencyRe = /^(рублей|рубля|рубль|руб|р|₽)(\s|$|[.!?;:()"])/i;
+    const pricePrepRe = /(^|\s)(за|на сумму|стоимостью|по цене|в размере)$/i;
+    const unitRe = /^(шт|штук|штуки|штука|штучек|пачк[аиеу]?|пачек|литр(?:а|ов)?|л|кг|килограмм(?:а|ов)?|г|гр|грамм(?:а|ов)?|м|метр(?:а|ов)?|см|мм|пар[аы]?|уп|упаковк[аи]|бутыл(?:ка|ки|ок)|бан(?:ка|ки|ок)|рулон(?:а|ов)?|коробок|коробки)(\s|$|[.!?;:()"])/i;
+
+    let bestCand = candidates[candidates.length - 1];
+    let bestScore = -Infinity;
+
+    candidates.forEach((cand, idx) => {
+      let score = 0;
+      const before = text.slice(0, cand.start).trim();
+      const after = text.slice(cand.end).trim();
+
+      if (currencyRe.test(after)) score += 100;
+      if (pricePrepRe.test(before)) score += 50;
+      if (unitRe.test(after)) score -= 100;
+      if (idx === candidates.length - 1) score += 20;
+      if (cand.value >= 10) score += 10;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestCand = cand;
       }
-    }
+    });
+
+    extractedAmount = bestCand.value;
+    remainingText = (text.slice(0, bestCand.start) + ' ' + text.slice(bestCand.end)).trim();
   }
 
   // 3. Number words (e.g. "три тысячи семьсот", "двести", "косарь")
@@ -159,22 +193,43 @@ function parseVoiceExpense(rawText) {
   };
 }
 
-// Run test cases
-const testCases = [
-  '3.700 руб',
-  '3 700 руб',
-  '3.700 кофе',
-  '430 хлеб',
-  'капучино и круассан 320',
-  'такси до дома 650',
-  'двести аптека',
-  'такси за полторы тысячи рублей',
-  'обед 450.50',
-  'косарь на бензин',
-  '25.000 кроссовки'
+// Automated assertion tests
+const tests = [
+  ['3.700 руб', 3700, ''],
+  ['3 700 руб', 3700, ''],
+  ['3.700 кофе', 3700, 'Кофе'],
+  ['430 хлеб', 430, 'Хлеб'],
+  ['капучино и круассан 320', 320, 'Капучино и круассан'],
+  ['такси до дома 650', 650, 'Такси до дома'],
+  ['двести аптека', 200, 'Аптека'],
+  ['такси за полторы тысячи рублей', 1500, 'Такси'],
+  ['обед 450.50', 450.5, 'Обед'],
+  ['обед 450,50', 450.5, 'Обед'],
+  ['хлеб 250,5', 250.5, 'Хлеб'],
+  ['косарь на бензин', 1000, 'Бензин'],
+  ['25.000 кроссовки', 25000, 'Кроссовки'],
+  ['чижик 2 пачки кофе 558', 558, 'Чижик 2 пачки кофе'],
+  ['бензин 20 литров авто заправка 1300', 1300, 'Бензин 20 литров авто заправка'],
+  ['2 тумблер батарея 196', 196, '2 тумблер батарея'],
+  ['558 рублей 2 пачки кофе', 558, '2 пачки кофе'],
+  ['1500 бензин 20 литров', 1500, 'Бензин 20 литров'],
+  ['20 литров бензина за 1 300 руб', 1300, '20 литров бензина'],
+  ['молоко 2 шт 180', 180, 'Молоко 2 шт']
 ];
 
-testCases.forEach(phrase => {
+let failed = 0;
+tests.forEach(([phrase, expectedAmt, expectedDesc]) => {
   const res = parseVoiceExpense(phrase);
-  console.log(`"${phrase}" -> Amount: ${res.amount} ₽, Description: "${res.description}"`);
+  const ok = res.amount === expectedAmt && res.description === expectedDesc;
+  if (!ok) {
+    failed++;
+    console.error(`FAIL "${phrase}" -> got {amount: ${res.amount}, desc: "${res.description}"}, expected {amount: ${expectedAmt}, desc: "${expectedDesc}"}`);
+  } else {
+    console.log(`PASS "${phrase}" -> ${res.amount} ₽ | "${res.description}"`);
+  }
 });
+
+if (failed > 0) {
+  process.exit(1);
+}
+console.log(`\nALL ${tests.length} PARSER TESTS PASSED!`);

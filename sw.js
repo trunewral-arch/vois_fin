@@ -1,5 +1,5 @@
 // Minimal Service Worker for PWA installability and offline support
-const CACHE_NAME = 'voice-app-v4.8';
+const CACHE_NAME = 'voice-app-v4.9';
 const ASSETS = [
   './',
   './index.html',
@@ -38,12 +38,23 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network first with cache fallback
+  // Ignore non-GET requests (e.g. POST sync to Google Apps Script)
+  if (event.request.method !== 'GET') return;
+
+  // Ignore cross-origin API requests (e.g. script.google.com) so live data is never stale-cached
+  const reqUrl = new URL(event.request.url);
+  if (reqUrl.origin !== self.location.origin) return;
+
+  // Network first with cache fallback for local static assets
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const resClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+        if (response && response.status === 200 && response.type === 'basic') {
+          const resClone = response.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => cache.put(event.request, resClone))
+            .catch(() => {});
+        }
         return response;
       })
       .catch(() => caches.match(event.request))
